@@ -1,7 +1,7 @@
 # PRD — AI Assessment Extraction & Answer Mapping
 
 Source spec: `initial.md` (VedaAI hiring assignment) + Figma design (file `hASwEgNoJjzlKnx9QxazY3`).
-Tech stack / AI API choices already logged in `docs/DECISIONS.md`: Next.js 14 + TypeScript +
+Tech stack / AI API choices already logged in `docs/DECISIONS.md`: Next.js (App Router, v16) + TypeScript +
 Tailwind, deployed on Vercel; Google Gemini 2.5 Flash for all AI calls.
 
 This document is the single source of truth for *what* gets built. Build order follows this

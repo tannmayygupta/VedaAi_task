@@ -63,7 +63,7 @@ enforcement mechanism instead of an automated pipeline.
 
 ## Working notes
 
-- Tech stack: Next.js 14 (App Router) + TypeScript + Tailwind CSS, deployed on Vercel. File
+- Tech stack: Next.js (App Router, currently v16) + TypeScript + Tailwind CSS, deployed on Vercel. File
   uploads go directly from the browser to Vercel Blob (not through our own API route body) —
   see `docs/DECISIONS.md` "Upload architecture correction."
 - AI API: Google Gemini 2.5 Flash (via `@google/genai`) for extraction, mapping, and grading.
@@ -73,3 +73,13 @@ enforcement mechanism instead of an automated pipeline.
 - Full rationale for all of the above is in `docs/DECISIONS.md`.
 - Must closely follow the Figma design (see `initial.md`).
 - No auth, no DB — in-memory only. Must end up deployed to a live URL with a public GitHub repo.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

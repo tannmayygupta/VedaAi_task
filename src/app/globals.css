@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f5f5;
+  --foreground: #303030;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Figma design tokens — see docs/DECISIONS.md and docs/RESEARCH.md §5 */
+  --color-ink-primary: #303030;
+  --color-ink-secondary: #5e5e5e;
+  --color-ink-inverse: #ffffff;
+
+  --color-brand-orange: #ff5623;
+
+  --color-surface-white: #ffffff;
+  --color-surface-dark-grey: #2b2b2b;
+  --color-surface-off-white: #f6f6f6;
+  --color-surface-off-white-20: #f0f0f0;
+  --color-surface-disabled: #a9a9a9;
+
+  --color-success: #34ac15;
+  --color-success-tint: rgba(69, 181, 41, 0.1);
+  --color-warning: #e3600f;
+  --color-warning-tint: rgba(255, 153, 0, 0.1);
+  --color-danger: #c0350a;
+  --color-danger-tint: #ffe9e2;
+
+  --color-highlight-border: #3dd218;
+  --color-highlight-fill: rgba(94, 255, 53, 0.1);
+
+  --font-sans: var(--font-bricolage-grotesque);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 40px;
+  --radius-pill: 64px;
+  --radius-full: 100px;
+
+  --shadow-realistic: 0px 32px 48px rgba(0, 0, 0, 0.2), 0px 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

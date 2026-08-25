@@ -5,7 +5,7 @@ See `CLAUDE.md` for the logging rule. This feeds `APPROACH.md` (the polished wri
 milestones.
 
 ## [2026-08-26] Tech stack: Next.js + TypeScript + Tailwind, deployed on Vercel
-**Decision:** Next.js 14 (App Router) + TypeScript + Tailwind CSS for the whole app (single
+**Decision:** Next.js (App Router, currently v16) + TypeScript + Tailwind CSS for the whole app (single
 project, API routes for extraction/mapping logic, no separate backend service). Deploy to
 Vercel.
 
@@ -208,3 +208,29 @@ actually run on the deploy target.
 - Uploaded blobs are transient scratch data for a single grading session with no auth; should be
   set to a short TTL/cleaned up (or left as acceptable throwaway cost) rather than accumulating
   indefinitely, since there's no user account to scope cleanup to.
+
+## [2026-08-26] Icons: lucide-react instead of downloading Figma's exported icon assets
+**Decision:** Shared shell (sidebar/top bar) and future UI use `lucide-react` icon components
+chosen to visually match each Figma icon's intent (e.g. `LayoutGrid` for Home, `ClipboardList`
+for Exams), rather than downloading and committing the actual SVG assets Figma's design-context
+tool exports.
+
+**Why:** Figma's exported asset URLs are short-lived (expire ~7 days) and are meant to be
+downloaded-and-committed if used long-term; `lucide-react` is already a common, MIT-licensed,
+tree-shakeable icon set with a close visual match to the outline-style icons used throughout this
+design, and using it avoids managing a folder of one-off SVG files for icons that carry no unique
+brand meaning (arrows, bells, settings gears, etc.).
+
+**Alternatives considered:**
+- Download and commit each Figma icon asset — more faithful pixel-for-pixel, but adds asset
+  management overhead (dozens of one-off SVGs) for icons that are otherwise generic UI glyphs;
+  reserved for anything with actual brand-specific artwork (e.g. the mascot illustration on the
+  upload screen), not generic outline icons.
+- Hand-drawing inline SVGs — explicitly against the design-to-code skill's guidance (never
+  hand-write icon paths without the real vector data).
+
+**Trade-offs / risks:** A handful of icons are an approximate match rather than pixel-identical
+to the Figma source glyphs — acceptable for generic navigation/utility icons; if a specific icon
+turns out to look visibly wrong next to the Figma reference during a phase's visual verification,
+swap that one icon for a downloaded-and-committed Figma asset instead of forcing a lucide
+substitute.

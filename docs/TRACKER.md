@@ -12,7 +12,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 
 | # | Phase | Status | PRD ref | Started | Done |
 |---|---|---|---|---|---|
-| 0 | Foundations & Tooling | 🔲 | — | | |
+| 0 | Foundations & Tooling | 🟡 | — | 2026-08-26 | |
 | 1 | Upload + Loading UI | 🔲 | §4, §5 | | |
 | 2 | Data Models & Gemini Client | 🔲 | §13 | | |
 | 3 | Question Extraction | 🔲 | §6 | | |
@@ -48,38 +48,46 @@ built and tested the same way.
 
 **Tasks:**
 - [x] `git init`, initial commit, `.gitignore` (incl. `.env.local`)
-- [ ] `create-next-app` (TypeScript, App Router, Tailwind, ESLint) — scaffold to a temp sibling
-      dir and merge in, per the workaround in `docs/RESEARCH.md` §1 (can't run in-place with
-      `CLAUDE.md`/`initial.md` already present)
-- [ ] Install Vitest + React Testing Library + jsdom; `npm run test` script (config in
-      `docs/RESEARCH.md` §3)
-- [ ] Install Zod for runtime schema validation of Gemini responses (patterns in
-      `docs/RESEARCH.md` §4)
-- [ ] Tailwind theme extended with the design tokens already logged (colors, font family
-      Bricolage Grotesque, radii) — draft in `docs/RESEARCH.md` §5; verify Tailwind major version
-      actually scaffolded (v3 config file vs v4 CSS `@theme`) and adapt
-- [ ] Base app shell: sidebar + top bar component matching the Figma header/sidebar (shared
-      across all screens)
-- [ ] `.env.local.example` documenting `GEMINI_API_KEY` (and `BLOB_READ_WRITE_TOKEN` — see Phase 1
-      prerequisite above)
-- [ ] `README.md` stub (setup instructions — filled in properly at Phase 9)
+- [x] `create-next-app` (TypeScript, App Router, Tailwind, ESLint) — scaffolded to a temp sibling
+      dir and merged in, per `docs/RESEARCH.md` §1. Actual versions installed: Next.js 16.3.3,
+      React 19.2.8, Tailwind v4 (CSS-first `@theme`, no `tailwind.config.ts`) — corrected in
+      CLAUDE.md/PRD/DECISIONS from the originally-assumed "Next.js 14"/Tailwind v3.
+- [x] Install Vitest + React Testing Library + jsdom; `npm run test`/`test:watch` scripts
+- [x] Install Zod for runtime schema validation of Gemini responses
+- [x] Tailwind theme tokens ported into `src/app/globals.css` `@theme inline` block (v4 syntax,
+      not the originally-drafted v3 config file) — colors, Bricolage Grotesque font family
+      (loaded via `next/font/google` in `layout.tsx`), border-radius scale, "realistic" shadow
+- [x] Base app shell: `Sidebar.tsx` + `TopBar.tsx` + `AppShell.tsx` under
+      `src/components/shell/`, matching the Figma header/sidebar (icons via `lucide-react` — see
+      decision log)
+- [x] `.env.local.example` documenting `GEMINI_API_KEY` and `BLOB_READ_WRITE_TOKEN`
+- [x] `README.md` stub (setup instructions, scripts, stack summary)
 
 **Tests:**
-- [ ] Smoke test: root layout renders without crashing (Vitest + RTL)
-- [ ] Lint + typecheck pass clean
+- [x] Smoke test: `Sidebar`/`TopBar` render without crashing, key text present (Vitest + RTL) —
+      `src/components/shell/shell.test.tsx`, 3 tests
+- [x] Lint + typecheck pass clean
 
 **Manual/visual verification (claude-in-chrome):**
-- [ ] Start dev server, load the app, confirm the shared shell (sidebar/topbar) visually matches
-      the Figma header/sidebar spacing, colors, and font
+- [x] Dev server loaded at `localhost:3000`; sidebar/top bar visually compared against Figma
+      frame `1:8773` — matched on colors, spacing, nav states, and typography. One deviation
+      found and fixed: "AI Teacher's Toolkit" pill was wrapping to two lines (too much horizontal
+      padding) — fixed to single-line, re-verified via zoomed screenshot.
 
-**Definition of Done:**
-- `npm run dev` runs cleanly, `npm run test` runs cleanly (even if only smoke tests exist),
-  `npm run lint`/`tsc --noEmit` clean, shared shell visually matches Figma.
+**Definition of Done:** ✅ met — `npm run dev`/`test`/`lint`/`typecheck` all clean; shared shell
+visually matches Figma after one fix.
 
-**Test results log:** _(fill in when run)_
+**Test results log:**
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm run test` | Pass (1 file, 3 tests) |
+| Visual check vs Figma `1:8773` | Pass (after 1 fix: pill text wrapping) |
 
-**Decisions made this phase:** _(link entries added to DECISIONS.md, if any beyond what's already
-logged)_
+**Decisions made this phase:** "Icons: lucide-react instead of downloading Figma's exported icon
+assets" (see `docs/DECISIONS.md`); Next.js/Tailwind version correction (not a new decision, a
+factual fix to the existing tech-stack entry).
 
 **Review sign-off:** [ ] User approved — date: ____
 
