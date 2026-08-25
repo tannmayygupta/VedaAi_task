@@ -13,8 +13,8 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | # | Phase | Status | PRD ref | Started | Done |
 |---|---|---|---|---|---|
 | 0 | Foundations & Tooling | 🟡 | — | 2026-08-26 | |
-| 1 | Upload + Loading UI | 🟡 | §4, §5 | 2026-08-26 | |
-| 2 | Data Models & Gemini Client | 🔲 | §13 | | |
+| 1 | Upload + Loading UI | 🟢 | §4, §5 | 2026-08-26 | 2026-08-26 |
+| 2 | Data Models & Gemini Client | 🟡 | §13 | 2026-08-26 | |
 | 3 | Question Extraction | 🔲 | §6 | | |
 | 4 | Answer Extraction + Mapping | 🔲 | §7 | | |
 | 5 | Grading & Feedback | 🔲 | §8 | | |
@@ -156,8 +156,10 @@ tint (`brand-orange/15`) instead of Figma's actual distinct tint color (`rgba(25
 — corrected to match exactly.
 
 **Definition of Done:** Code complete, 56/56 tests green, lint/typecheck clean, UI verified live
-in-browser for every interaction that doesn't require a real Blob token. **Not fully closed** —
-holding at 🟡 pending the Blob token to verify the real upload path end-to-end.
+in-browser for every interaction that doesn't require a real Blob token. Real end-to-end Blob
+upload verification is **deferred to Phase 9** (pre-deployment smoke test) per user decision on
+2026-08-26 rather than blocking further phases on it — everything else about Phase 1 is complete
+and verified.
 
 **Test results log:**
 | Check | Result |
@@ -172,7 +174,8 @@ holding at 🟡 pending the Blob token to verify the real upload path end-to-end
 **Decisions made this phase:** "Deviation: dropped the decorative mascot illustration on the
 upload screen" (see `docs/DECISIONS.md`).
 
-**Review sign-off:** [ ] User approved — date: ____
+**Review sign-off:** [x] User approved — date: 2026-08-26 (proceeded to Phase 2; live-Blob-token
+check explicitly deferred to Phase 9 rather than addressed now)
 
 ---
 
@@ -183,39 +186,68 @@ upload screen" (see `docs/DECISIONS.md`).
 Gemini client wrapper exists that can send files + a schema and get back parsed, validated JSON —
 proven against a trivial real call before building real prompts on top of it.
 
-**Tasks:**
-- [ ] **Verify the real `@google/genai` SDK surface** (`npm ls @google/genai`, inspect installed
-      type defs) before writing the wrapper — `docs/RESEARCH.md` §2 flagged the researched API
-      shape (`interactions.create` vs `models.generateContent`, model name) as unverified; do not
-      build on it blind
-- [ ] `Question`, `AnswerRegion`, `Grading` TypeScript interfaces (PRD §6–§8) + matching Zod
-      schemas for runtime validation of model output (patterns in `docs/RESEARCH.md` §4)
-- [ ] Gemini client module: takes file(s)/Blob URL(s) + prompt + response schema, returns
-      typed/validated result or a typed error
-- [ ] Next.js API route(s) skeleton for the pipeline (e.g. `/api/extract-questions`,
-      `/api/extract-and-map-answers`) — receive Blob URLs, fetch bytes server-side, request/
-      response shapes only, real prompts come in Phase 3/4
-- [ ] Centralized error types (API failure, quota, malformed response, unreadable file) so
-      Phase 7's error UI has something consistent to render
+**Prerequisite:** `GEMINI_API_KEY` in `.env.local` — **still outstanding** (`.env.local` doesn't
+exist yet). All code is written and self-verified with mocks; the real end-to-end Gemini call is
+NOT yet verified and remains blocked on this (same pattern as the Blob-token gap in Phase 1).
 
-**Tests (Vitest):**
-- [ ] Zod schemas: valid sample JSON parses into the typed shape; malformed/missing-field JSON
-      is rejected with a clear error
-- [ ] Gemini client wrapper: given a mocked SDK response, returns the parsed/validated object;
-      given a mocked SDK error, returns the typed error (no unhandled throw)
+**Tasks:**
+- [x] **Verified the real `@google/genai` SDK surface myself** by installing it (landed at
+      v2.18.0) and reading its shipped `.d.ts` files directly — confirmed `ai.models
+      .generateContent()` is the real call shape; the "Interactions API"
+      (`client.interactions.create()`, model `gemini-3.7-flash`) a pre-Phase-2 research pass had
+      flagged as unverified does not exist in this installed package at all. Also confirmed Zod
+      v4's native `z.toJSONSchema()` covers schema conversion with no extra dependency. See
+      `docs/DECISIONS.md` "Gemini SDK surface verified."
+- [x] `Question`, `AnswerRegion`, `Grading` Zod schemas + derived types (PRD §6–§8) —
+      `src/lib/schemas/question.ts`, `answerRegion.ts` (incl. bounding-box + multi-page
+      cross-reference validation), `grading.ts` (incl. `summarizeGradings`/`scoreTier` helpers)
+- [x] Gemini client module — `src/lib/gemini/client.ts` (`callGeminiJson`, verified SDK call),
+      `src/lib/gemini/part.ts` (Part builders), `src/lib/gemini/withSchemaValidation.ts`
+      (safeParse + one bounded retry with a correction note, else typed failure — see decision
+      log), `src/lib/gemini/fetchBlobFile.ts` (server-side Blob fetch)
+- [x] API route skeletons — `src/app/api/extract-questions/route.ts`,
+      `src/app/api/extract-and-map-answers/route.ts` (plumbing only: request validation, Blob
+      fetch, schema-validated response; real extraction/mapping logic explicitly stubbed with a
+      `TODO(Phase 3/4)` marker, matching the tracker's original scope)
+- [x] Centralized error types — `src/lib/errors.ts` (`PipelineError`, `normalizeError`,
+      `pipelineErrorToResponseBody`)
+
+Built via 10 parallel agents (one file/utility each) — same pattern as Phase 1. Cross-file
+interface contracts (exact exported types/signatures) were specified up front so agents could
+build against each other's not-yet-existing sibling files; one agent caught itself starting a
+duplicate stub of another agent's file and correctly deleted it rather than racing.
+
+**Tests (Vitest):** 61 new tests across 10 new files (117 total project-wide), all passing —
+- [x] Zod schemas: valid sample JSON parses into the typed shape; malformed/missing-field JSON
+      is rejected with a clear error (incl. the `AnswerRegion` multi-page cross-reference check
+      and the `Grading` `marksAwarded <= marksTotal` refinement)
+- [x] Gemini client wrapper: given a mocked SDK response, returns the parsed object; missing/
+      invalid response text rejects; missing `GEMINI_API_KEY` rejects before attempting a call
+- [x] `withSchemaValidation`: first-try success, retry-then-success (with a real correction note
+      passed through), both-tries-invalid → typed `malformed-response` error, hard throw → no
+      retry attempted
+- [x] `fetchBlobFile`: success path, missing content-type fallback, non-OK status rejects
+- [x] Both API routes: missing-field validation (400), success path (200 with schema-shaped
+      body), upstream fetch failure (500)
 
 **Manual/real-API verification:**
-- [ ] One real Gemini call (trivial prompt, e.g. "extract the title of this PDF") through the
-      wrapper, confirmed to return correctly — proves auth/config/plumbing before building real
-      extraction logic on top
+- [ ] One real Gemini call through the wrapper — **not yet run**, blocked on `GEMINI_API_KEY`
 
-**Definition of Done:** Schemas validate correctly in both directions (good/bad input); wrapper
-handles both success and failure without crashing; one real end-to-end call through the actual
-Gemini API succeeds.
+**Definition of Done:** Code complete, 117/117 tests green (project-wide), lint/typecheck clean.
+Real end-to-end Gemini call is **deferred** until `GEMINI_API_KEY` is available — tracked the
+same way as the Phase 1 Blob-token gap, not blocking further phases.
 
-**Test results log:** _(fill in when run)_
+**Test results log:**
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass (added an eslint rule tweak: `argsIgnorePattern: "^_"` so intentionally-unused stub params don't warn) |
+| `npm run test` | Pass (117/117, 23 files) |
+| Real Gemini API call | **Not yet run** — blocked on `GEMINI_API_KEY` |
 
-**Decisions made this phase:** _(fill in — e.g. exact Gemini SDK/response-schema mechanism used)_
+**Decisions made this phase:** "Gemini SDK surface verified: `ai.models.generateContent()`, not
+an 'Interactions API'"; "Structured-output validation: safeParse + one bounded retry, else typed
+failure" (both in `docs/DECISIONS.md`).
 
 **Review sign-off:** [ ] User approved — date: ____
 

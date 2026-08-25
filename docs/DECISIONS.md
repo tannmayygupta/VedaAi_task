@@ -255,3 +255,57 @@ half-reproduced with a placeholder that wouldn't look right anyway.
 
 **Trade-offs / risks:** Slightly less visual richness than the Figma mock on the upload screen;
 purely cosmetic, no functional impact. Revisit in Phase 8 (polish) if time remains.
+
+## [2026-08-26] Gemini SDK surface verified: `ai.models.generateContent()`, not an "Interactions API"
+**Decision:** All Gemini calls go through `new GoogleGenAI({apiKey}).models.generateContent({model, contents, config: {responseMimeType: "application/json", responseJsonSchema}})`, using Zod v4's native `z.toJSONSchema()` to produce the schema — no extra JSON-schema-conversion package needed.
+
+**Why:** A pre-Phase-2 research pass (see `docs/RESEARCH.md` §2) flagged a newer-looking
+"Interactions API" (`client.interactions.create()`, model `gemini-3.7-flash`) as *possibly* the
+current recommended surface, but explicitly marked it unverified against a real install. Before
+building the client wrapper, I installed `@google/genai` (landed at v2.18.0) and read its actual
+shipped `.d.ts` type definitions directly: there is no `Interactions` class in this package at
+all — only `Models.generateContent`, confirming the research agent's caution was warranted and
+the "Interactions API" was either a hallucination, docs for an unreleased/different product tier,
+or simply not present in the version that actually installs via `npm install @google/genai`
+today. Building against unverified API surfaces from a single research pass — rather than the
+real installed package — is exactly the failure mode being guarded against here.
+
+**Alternatives considered:** None seriously — once the real type definitions were read directly,
+there was only one real call shape available to build against.
+
+**Trade-offs / risks:** `gemini-2.5-flash` (the model name from the original tech-stack decision)
+is passed as a plain untyped `string` — the SDK's types don't enumerate valid model names, so
+whether that specific model is actually available on the eventual API key can only be confirmed
+with a real call once `GEMINI_API_KEY` is set (tracked as an open item in `docs/TRACKER.md`
+Phase 2, same pattern as the Blob-token gap from Phase 1). If it turns out to be unavailable or
+renamed, swapping it is a one-line change (`DEFAULT_GEMINI_MODEL` in `src/lib/gemini/client.ts`).
+
+## [2026-08-26] Structured-output validation: safeParse + one bounded retry, else typed failure
+**Decision:** Every Gemini call that expects structured JSON goes through
+`withSchemaValidation(schema, attempt)`: validate the response with the relevant Zod schema's
+`safeParse`; if invalid, retry the SAME call exactly once with a correction note describing what
+was wrong; if still invalid, return a typed `PipelineError` with code `"malformed-response"`
+rather than throwing or silently accepting bad data.
+
+**Why:** LLM structured output is usually correct but not guaranteed — a bare `safeParse` with no
+retry would fail more often than necessary on a transient formatting slip, while blind
+auto-retrying forever (or trusting unvalidated output) would either waste quota or let malformed
+data reach the UI silently. One bounded retry with an explicit correction note is a well-known
+middle ground: cheap (at most 2x the calls), gives the model a real chance to self-correct with
+concrete feedback, and has a hard stop so a genuinely broken response fails loudly and typed
+rather than looping or corrupting downstream state.
+
+**Alternatives considered:**
+- No retry, fail immediately on first validation failure — simpler, but throws away an easy,
+  cheap recovery path for what's often just a minor formatting slip.
+- Unbounded/multiple retries — risks burning quota and latency on a response the model may not
+  be able to self-correct at all; one retry with a specific correction note captures most of the
+  recoverable cases without open-ended cost.
+- Retrying at the raw-call level (re-running the whole extraction from scratch) instead of
+  passing a targeted correction note — less likely to actually fix the same mistake, since the
+  model isn't told what was wrong the first time.
+
+**Trade-offs / risks:** A genuinely ambiguous or complex document could still exhaust the one
+retry and surface as a `"malformed-response"` error to the teacher — this needs a clear, honest
+error state in Phase 7's UI (not a silent failure), and is an explicit assumption/limitation to
+call out in the final submission writeup.
