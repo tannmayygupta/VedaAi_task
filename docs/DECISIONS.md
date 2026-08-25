@@ -273,12 +273,41 @@ real installed package — is exactly the failure mode being guarded against her
 **Alternatives considered:** None seriously — once the real type definitions were read directly,
 there was only one real call shape available to build against.
 
-**Trade-offs / risks:** `gemini-2.5-flash` (the model name from the original tech-stack decision)
-is passed as a plain untyped `string` — the SDK's types don't enumerate valid model names, so
-whether that specific model is actually available on the eventual API key can only be confirmed
-with a real call once `GEMINI_API_KEY` is set (tracked as an open item in `docs/TRACKER.md`
-Phase 2, same pattern as the Blob-token gap from Phase 1). If it turns out to be unavailable or
-renamed, swapping it is a one-line change (`DEFAULT_GEMINI_MODEL` in `src/lib/gemini/client.ts`).
+**Trade-offs / risks:** The model name is passed as a plain untyped `string` — the SDK's types
+don't enumerate valid model names, so availability can only be confirmed with a real call. This
+happened almost immediately: see the follow-up entry below, "Model name correction:
+`gemini-2.5-flash` → `gemini-3.6-flash`."
+
+## [2026-08-26] Model name correction: `gemini-2.5-flash` → `gemini-3.6-flash`
+**Decision:** `DEFAULT_GEMINI_MODEL` in `src/lib/gemini/client.ts` is `"gemini-3.6-flash"`, not
+`"gemini-2.5-flash"` as originally chosen in the initial tech-stack decision.
+
+**Why:** The first real Gemini API call made with the user's actual API key (once
+`GEMINI_API_KEY` was available) failed immediately with a 404 from the live API itself:
+`"This model models/gemini-2.5-flash is no longer available to new users. Please update your
+code to use models/gemini-3.6-flash for the latest features and improvements."` This is expected
+and unsurprising in hindsight — the original model choice was made from training-data knowledge
+current only through around January 2026, while this project is being built on 2026-08-26; model
+generations move fast, and a specific model ID from over half a year prior is exactly the kind of
+detail training data goes stale on first. Swapping to `gemini-3.6-flash` and re-running the same
+smoke test (plain structured JSON output, then a PDF sent via `inlineData`) confirmed both work
+correctly end-to-end with the new model. This also retroactively validates that the "Interactions
+API"/`gemini-3.7-flash` mentioned by the pre-Phase-2 research pass (flagged unverified at the
+time — see the SDK-surface-verification entry above) wasn't pure hallucination on the model-name
+front — there genuinely is a newer Gemini model generation now; it was specifically the
+"Interactions API" *class/method shape* that didn't exist in the installed SDK, not the idea that
+newer models exist.
+
+**Alternatives considered:** None — this isn't a judgment call, it's a hard runtime fact from the
+live API. The only real "alternative" was catching it now via a real smoke test rather than
+discovering it later mid-Phase-3/4 after prompts were already built and tested only against
+mocks — which is exactly why a real API call was scheduled as this phase's manual verification
+step rather than skipped in favor of mocks-only testing.
+
+**Trade-offs / risks:** Model naming/availability can keep moving during the life of this
+project; if `gemini-3.6-flash` itself becomes unavailable later, the fix is the same one-line
+change to `DEFAULT_GEMINI_MODEL`. Worth a quick re-check of model availability at Phase 9
+(deployment) in case more time has passed and it's moved on again.
 
 ## [2026-08-26] Structured-output validation: safeParse + one bounded retry, else typed failure
 **Decision:** Every Gemini call that expects structured JSON goes through

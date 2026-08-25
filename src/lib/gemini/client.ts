@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { GeminiPart } from "./part";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 
 export type CallGeminiJsonParams = {
   parts: GeminiPart[];

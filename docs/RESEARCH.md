@@ -66,6 +66,15 @@ format — combinable with structured output in a single call. Box origin is top
 **Phase 2 action item:** run `npm ls @google/genai` / inspect its type defs directly, and re-derive
 the exact call shape from the installed version before writing the real wrapper.
 
+**[Update, Phase 2 complete]:** Done — verified `ai.models.generateContent()` directly against
+the installed v2.18.0 package; no `Interactions` class exists in it. However, a real API call
+with the actual API key confirmed the model-generation part of this research WAS onto something:
+`gemini-2.5-flash` returned a 404 ("no longer available to new users"), and the live API pointed
+to `gemini-3.6-flash` — close to, but not exactly, the `gemini-3.7-flash` guessed here. So: the
+"Interactions API" class/method shape was not real (or at least not in this SDK version), but a
+Gemini 3.x model generation genuinely exists now. See `docs/DECISIONS.md` "Model name correction"
+for the fix applied.
+
 ---
 
 ## 3. Vitest + React Testing Library setup (Phase 0)

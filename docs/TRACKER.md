@@ -14,7 +14,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 |---|---|---|---|---|---|
 | 0 | Foundations & Tooling | 🟡 | — | 2026-08-26 | |
 | 1 | Upload + Loading UI | 🟢 | §4, §5 | 2026-08-26 | 2026-08-26 |
-| 2 | Data Models & Gemini Client | 🟡 | §13 | 2026-08-26 | |
+| 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
 | 3 | Question Extraction | 🔲 | §6 | | |
 | 4 | Answer Extraction + Mapping | 🔲 | §7 | | |
 | 5 | Grading & Feedback | 🔲 | §8 | | |
@@ -186,9 +186,7 @@ check explicitly deferred to Phase 9 rather than addressed now)
 Gemini client wrapper exists that can send files + a schema and get back parsed, validated JSON —
 proven against a trivial real call before building real prompts on top of it.
 
-**Prerequisite:** `GEMINI_API_KEY` in `.env.local` — **still outstanding** (`.env.local` doesn't
-exist yet). All code is written and self-verified with mocks; the real end-to-end Gemini call is
-NOT yet verified and remains blocked on this (same pattern as the Blob-token gap in Phase 1).
+**Prerequisite:** `GEMINI_API_KEY` in `.env.local` — ✅ done, key provided 2026-08-26.
 
 **Tasks:**
 - [x] **Verified the real `@google/genai` SDK surface myself** by installing it (landed at
@@ -231,11 +229,17 @@ duplicate stub of another agent's file and correctly deleted it rather than raci
       body), upstream fetch failure (500)
 
 **Manual/real-API verification:**
-- [ ] One real Gemini call through the wrapper — **not yet run**, blocked on `GEMINI_API_KEY`
+- [x] Real Gemini call, plain structured JSON output (`z.toJSONSchema` + `responseJsonSchema`) —
+      succeeded on the first real call, but with an important catch: **`gemini-2.5-flash`
+      returned a 404 — deprecated, no longer available to new users.** The live API's own error
+      message pointed to `gemini-3.6-flash`; swapped `DEFAULT_GEMINI_MODEL` and re-verified —
+      works correctly. See `docs/DECISIONS.md` "Model name correction."
+- [x] Real Gemini call with a PDF sent via `inlineData` (base64) — succeeded, model correctly
+      described the (blank test) PDF's contents, confirming the file-input mechanism works
+      end-to-end, not just plain text prompts.
 
-**Definition of Done:** Code complete, 117/117 tests green (project-wide), lint/typecheck clean.
-Real end-to-end Gemini call is **deferred** until `GEMINI_API_KEY` is available — tracked the
-same way as the Phase 1 Blob-token gap, not blocking further phases.
+**Definition of Done:** ✅ met — 117/117 tests green, lint/typecheck clean, real end-to-end Gemini
+calls verified for both structured JSON output and file input, using the corrected model name.
 
 **Test results log:**
 | Check | Result |
@@ -243,13 +247,16 @@ same way as the Phase 1 Blob-token gap, not blocking further phases.
 | `npm run typecheck` | Pass |
 | `npm run lint` | Pass (added an eslint rule tweak: `argsIgnorePattern: "^_"` so intentionally-unused stub params don't warn) |
 | `npm run test` | Pass (117/117, 23 files) |
-| Real Gemini API call | **Not yet run** — blocked on `GEMINI_API_KEY` |
+| Real Gemini API call (structured JSON) | Pass (after model-name fix — see decision log) |
+| Real Gemini API call (PDF file input) | Pass |
 
 **Decisions made this phase:** "Gemini SDK surface verified: `ai.models.generateContent()`, not
 an 'Interactions API'"; "Structured-output validation: safeParse + one bounded retry, else typed
-failure" (both in `docs/DECISIONS.md`).
+failure"; "Model name correction: `gemini-2.5-flash` → `gemini-3.6-flash`" (all in
+`docs/DECISIONS.md`).
 
-**Review sign-off:** [ ] User approved — date: ____
+**Review sign-off:** [x] User approved — date: 2026-08-26 (provided `GEMINI_API_KEY`, real
+end-to-end verification completed same day)
 
 ---
 

@@ -66,7 +66,7 @@ enforcement mechanism instead of an automated pipeline.
 - Tech stack: Next.js (App Router, currently v16) + TypeScript + Tailwind CSS, deployed on Vercel. File
   uploads go directly from the browser to Vercel Blob (not through our own API route body) —
   see `docs/DECISIONS.md` "Upload architecture correction."
-- AI API: Google Gemini 2.5 Flash (via `@google/genai`) for extraction, mapping, and grading.
+- AI API: Google Gemini (currently `gemini-3.6-flash`) (via `@google/genai`) for extraction, mapping, and grading.
 - Testing: Vitest + React Testing Library for unit/component/logic tests; claude-in-chrome
   (agent-driven) for E2E/visual verification instead of a maintained Playwright/Cypress suite;
   real Gemini API calls for extraction/mapping accuracy testing.
