@@ -16,3 +16,6 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 *.pem
+
+bash.exe.stackdump
+.claude/
