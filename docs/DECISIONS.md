@@ -234,3 +234,24 @@ to the Figma source glyphs — acceptable for generic navigation/utility icons; 
 turns out to look visibly wrong next to the Figma reference during a phase's visual verification,
 swap that one icon for a downloaded-and-committed Figma asset instead of forcing a lucide
 substitute.
+
+## [2026-08-26] Deviation: dropped the decorative mascot illustration on the upload screen
+**Decision:** The upload screen (Figma `1:8773`/`1:8826`) omits the circular illustrated
+mascot/photo graphic that sits above the upload dropzones in the design.
+
+**Why:** That graphic is bespoke brand artwork (a raster PNG behind decorative animated-looking
+badge icons), not a generic UI element — reproducing it faithfully would mean downloading and
+committing Figma's exported asset (see the lucide-react decision above for why generic icons
+don't need this, but this one does since it's not generic). Given it's purely decorative (no
+functional role in upload/extraction/mapping/grading — the assignment's actual evaluation
+criteria) and time is better spent on the functional pipeline, it's cut for now rather than
+half-reproduced with a placeholder that wouldn't look right anyway.
+
+**Alternatives considered:**
+- Download and commit the actual Figma PNG asset — would restore full fidelity; deferred as a
+  low-priority polish item, not core functionality.
+- Substitute a generic icon/illustration — rejected: a wrong or generic-looking stand-in for
+  bespoke brand art would look more obviously "off" than simply omitting it.
+
+**Trade-offs / risks:** Slightly less visual richness than the Figma mock on the upload screen;
+purely cosmetic, no functional impact. Revisit in Phase 8 (polish) if time remains.
