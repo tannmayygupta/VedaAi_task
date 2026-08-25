@@ -73,6 +73,18 @@ Screen"):
 - Accept multiple image files for a single slot (e.g., 4 photos of 4 pages) as well as a single
   multi-page PDF — internally both normalize to an **ordered list of page images**.
 
+**Upload transport (corrected from the original naive design — see `docs/DECISIONS.md`
+"Upload architecture correction"):** files do **not** get posted as `multipart/form-data`
+straight to a Next.js API route. Vercel Functions cap request bodies at a hard, non-configurable
+4.5MB — two ≤10MB files would exceed that immediately. Instead:
+1. The client requests a short-lived upload token from a small API route
+   (`/api/blob-upload-token`), whose own request/response bodies stay well under the limit.
+2. The browser uploads the file **directly to Vercel Blob storage** using that token — the file
+   bytes never pass through our own Function.
+3. Once both files are uploaded, the client calls the processing route with just the two
+   resulting Blob URLs (a tiny payload), and that route fetches the file bytes server-side before
+   forwarding them to Gemini.
+
 **UI behavior (Upload Screen — Empty/Filled states):**
 - Empty state: two dashed dropzones, disabled "Start Mapping" button.
 - On file select/drop: dropzone becomes a file chip (filename, size, page count, remove ✕
@@ -380,10 +392,13 @@ guarantees, or authoritative (non-AI) grading — all explicitly out of scope pe
 ## 13. Data flow summary (for the build itself)
 
 ```
+Browser ──(direct upload, bypasses our Function body limit)──▶ Vercel Blob
+Browser ──(blob URLs only, tiny payload)──▶ /api/extract-and-map-answers
+
 Question[]  ──┐
               ├──▶ single Gemini call (answer sheet + Question[] as context) ──▶ AnswerRegion[]
 Answer sheet ─┘                                                                        │
-                                                                                        ▼
+   (fetched server-side from its Blob URL)                                            ▼
                                                                       Grading[] (per matched question,
                                                                       via transcribedText + question text)
 ```

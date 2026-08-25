@@ -169,3 +169,42 @@ criteria.
 - Without CI, "tests green" is only as reliable as remembering to run them locally before
   advancing a phase — the tracker's phase-gate checklist is the enforcement mechanism instead of
   automated pipeline enforcement.
+
+## [2026-08-26] Upload architecture correction: direct client-to-Vercel-Blob upload, not a multipart POST to our own API route
+**Decision:** Files are uploaded directly from the browser to Vercel Blob storage (bypassing our
+own Next.js Function entirely for the file bytes), using a short-lived client-upload token issued
+by a tiny API route. The processing route then receives only the resulting Blob URL(s) and fetches
+the file bytes server-side before forwarding them to Gemini. This replaces the original PRD §4
+design of posting both files as `multipart/form-data` straight to an API route.
+
+**Why:** Discovered during pre-Phase-0 research (confirmed independently by two research passes
+citing Vercel's own docs): Vercel Functions enforce a **hard 4.5MB request/response body limit**,
+infrastructure-level and not configurable. Two files up to 10MB each — the limit already shown in
+the Figma design's own "Max 10MB" caption — would blow this limit immediately (`413
+FUNCTION_PAYLOAD_TOO_LARGE`) under the originally-scoped design. This is caught now, before any
+upload code is written, specifically so the PRD doesn't go stale against a design that can't
+actually run on the deploy target.
+
+**Alternatives considered:**
+- Lower the advertised per-file limit to fit under 4.5MB (e.g. ~4MB) and keep the naive
+  POST-to-API-route design — rejected: it silently breaks fidelity to the Figma design's explicit
+  "Max 10MB" copy, and more importantly risks pushing teachers to over-compress scans, directly
+  hurting handwriting-OCR accuracy, which is the app's core value proposition.
+- Client-side file compression/downscaling before a normal POST — rejected for the same OCR-risk
+  reason: compression artifacts on handwritten answer sheets are exactly the failure mode that
+  would tank extraction/mapping accuracy, the assignment's top evaluation criterion.
+- Chunked upload to our own API route — rejected as unnecessary complexity; Vercel Blob's
+  client-upload flow solves the exact same problem natively on the same platform we're already
+  deploying to, with less code to write and maintain.
+
+**Trade-offs / risks:**
+- Adds a new external dependency (`@vercel/blob`) and a new required env var
+  (`BLOB_READ_WRITE_TOKEN`), meaning a Vercel account/Blob store must exist **starting at Phase 1
+  local development**, not just at Phase 9 deployment — earlier than originally planned.
+  Vercel Blob's free tier is generous enough for assignment-scale use.
+- Slightly more moving parts than a single POST (token-issue route → client upload → separate
+  processing route that re-fetches the blob) — judged worth it to preserve both the Figma-spec
+  file-size limit and answer-extraction quality.
+- Uploaded blobs are transient scratch data for a single grading session with no auth; should be
+  set to a short TTL/cleaned up (or left as acceptable throwaway cost) rather than accumulating
+  indefinitely, since there's no user account to scope cleanup to.

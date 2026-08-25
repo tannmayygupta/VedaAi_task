@@ -63,7 +63,9 @@ enforcement mechanism instead of an automated pipeline.
 
 ## Working notes
 
-- Tech stack: Next.js 14 (App Router) + TypeScript + Tailwind CSS, deployed on Vercel.
+- Tech stack: Next.js 14 (App Router) + TypeScript + Tailwind CSS, deployed on Vercel. File
+  uploads go directly from the browser to Vercel Blob (not through our own API route body) —
+  see `docs/DECISIONS.md` "Upload architecture correction."
 - AI API: Google Gemini 2.5 Flash (via `@google/genai`) for extraction, mapping, and grading.
 - Testing: Vitest + React Testing Library for unit/component/logic tests; claude-in-chrome
   (agent-driven) for E2E/visual verification instead of a maintained Playwright/Cypress suite;

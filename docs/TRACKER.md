@@ -23,9 +23,20 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 8 | Bonus / Polish | 🔲 | §12 | | |
 | 9 | Deployment & Submission | 🔲 | §11 | | |
 
-**Open blockers:** Phases 3–4 need real sample test documents (a question paper + a handwritten
-answer sheet) to run real-API verification against — see Phase 3 prerequisites. Need these from
-the user (or synthetic ones sourced) before Phase 3 can be gated closed.
+**Open blockers:**
+- Phases 3–4 need real sample test documents (a question paper + a handwritten answer sheet) to
+  run real-API verification against — see Phase 3 prerequisites. Plan: generate synthetic ones
+  (`pdfkit` + `puppeteer`, see `docs/RESEARCH.md` §6) rather than wait on external files.
+- **Phase 1 now needs a Vercel Blob store + `BLOB_READ_WRITE_TOKEN`** (architecture correction,
+  see `docs/DECISIONS.md` "Upload architecture correction") — this requires a Vercel account
+  earlier than originally planned (Phase 1, not just Phase 9 deploy). Needs the user to create a
+  Blob store (Vercel dashboard → Storage, or `vercel blob store add`) and share the token, or
+  confirm they're fine doing this step themselves when we reach Phase 1.
+
+Pre-Phase-0 research is complete — see `docs/RESEARCH.md` for full findings (Next.js scaffold
+workaround, Gemini SDK usage caveats, Vitest/RTL config, Zod patterns, Tailwind theme draft,
+synthetic test-doc plan, the Vercel Blob correction, both Gemini prompt/schema drafts, and mobile
+Figma frame specs for Phase 8).
 
 ---
 
@@ -36,15 +47,21 @@ the user (or synthetic ones sourced) before Phase 3 can be gated closed.
 built and tested the same way.
 
 **Tasks:**
-- [ ] `create-next-app` (TypeScript, App Router, Tailwind, ESLint)
-- [ ] `git init`, initial commit, `.gitignore` (incl. `.env.local`)
-- [ ] Install Vitest + React Testing Library + jsdom; `npm run test` script
-- [ ] Install Zod (or equivalent) for runtime schema validation of Gemini responses
+- [x] `git init`, initial commit, `.gitignore` (incl. `.env.local`)
+- [ ] `create-next-app` (TypeScript, App Router, Tailwind, ESLint) — scaffold to a temp sibling
+      dir and merge in, per the workaround in `docs/RESEARCH.md` §1 (can't run in-place with
+      `CLAUDE.md`/`initial.md` already present)
+- [ ] Install Vitest + React Testing Library + jsdom; `npm run test` script (config in
+      `docs/RESEARCH.md` §3)
+- [ ] Install Zod for runtime schema validation of Gemini responses (patterns in
+      `docs/RESEARCH.md` §4)
 - [ ] Tailwind theme extended with the design tokens already logged (colors, font family
-      Bricolage Grotesque, radii) so later phases use tokens, not literals
+      Bricolage Grotesque, radii) — draft in `docs/RESEARCH.md` §5; verify Tailwind major version
+      actually scaffolded (v3 config file vs v4 CSS `@theme`) and adapt
 - [ ] Base app shell: sidebar + top bar component matching the Figma header/sidebar (shared
       across all screens)
-- [ ] `.env.local.example` documenting `GEMINI_API_KEY`
+- [ ] `.env.local.example` documenting `GEMINI_API_KEY` (and `BLOB_READ_WRITE_TOKEN` — see Phase 1
+      prerequisite above)
 - [ ] `README.md` stub (setup instructions — filled in properly at Phase 9)
 
 **Tests:**
@@ -74,12 +91,18 @@ logged)_
 **Goal:** Teacher can select/drop both files, see validation errors, see the button enable, and
 see the loading screen — no AI calls wired yet (stub the "extraction" trigger with a fake delay).
 
+**Prerequisite:** Vercel Blob store created + `BLOB_READ_WRITE_TOKEN` available locally (see
+Overview "Open blockers") — needed for the real upload wiring below; the pure UI tasks (dropzones,
+chips, validation) don't need it and can proceed first.
+
 **Tasks:**
 - [ ] Empty-state dropzones (question paper / answer sheet) per Figma frame `1:8773`
 - [ ] Client-side validation: file type (PDF/JPG/PNG/WEBP), 10MB max, multi-image support per
       slot
 - [ ] Filled-state file chips (filename, size, page count, remove ✕) per Figma frame `1:8826`
 - [ ] "Start Mapping" button disabled/enabled logic
+- [ ] `/api/blob-upload-token` route + client-side direct-to-Blob upload wiring (replaces a naive
+      multipart POST — see `docs/DECISIONS.md` "Upload architecture correction")
 - [ ] Loading screen per Figma frame `1:9146` (sparkle animation, gradient "Extracting…" text)
 - [ ] Route/page structure: `/` (upload) → `/mapping` (or equivalent) once processing "completes"
 
@@ -115,13 +138,17 @@ Gemini client wrapper exists that can send files + a schema and get back parsed,
 proven against a trivial real call before building real prompts on top of it.
 
 **Tasks:**
+- [ ] **Verify the real `@google/genai` SDK surface** (`npm ls @google/genai`, inspect installed
+      type defs) before writing the wrapper — `docs/RESEARCH.md` §2 flagged the researched API
+      shape (`interactions.create` vs `models.generateContent`, model name) as unverified; do not
+      build on it blind
 - [ ] `Question`, `AnswerRegion`, `Grading` TypeScript interfaces (PRD §6–§8) + matching Zod
-      schemas for runtime validation of model output
-- [ ] Gemini client module: takes file(s) + prompt + response schema, returns typed/validated
-      result or a typed error
+      schemas for runtime validation of model output (patterns in `docs/RESEARCH.md` §4)
+- [ ] Gemini client module: takes file(s)/Blob URL(s) + prompt + response schema, returns
+      typed/validated result or a typed error
 - [ ] Next.js API route(s) skeleton for the pipeline (e.g. `/api/extract-questions`,
-      `/api/extract-and-map-answers`) — request/response shapes only, real prompts come in
-      Phase 3/4
+      `/api/extract-and-map-answers`) — receive Blob URLs, fetch bytes server-side, request/
+      response shapes only, real prompts come in Phase 3/4
 - [ ] Centralized error types (API failure, quota, malformed response, unreadable file) so
       Phase 7's error UI has something consistent to render
 
