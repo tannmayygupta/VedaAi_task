@@ -3,10 +3,10 @@ import { render } from "@testing-library/react";
 import { UploadHeroIllustration } from "./UploadHeroIllustration";
 
 describe("UploadHeroIllustration", () => {
-  it("renders the center icon and four orbiting badges without crashing", () => {
+  it("renders the Figma-exported illustration image", () => {
     const { container } = render(<UploadHeroIllustration />);
-    const svgs = container.querySelectorAll("svg");
-    // 1 center icon + 4 orbiting badge icons
-    expect(svgs.length).toBe(5);
+    const img = container.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img?.getAttribute("src")).toContain("upload-hero-illustration.svg");
   });
 });

@@ -12,8 +12,12 @@ import {
   buildQuestionExtractionUserPrompt,
 } from "@/lib/gemini/prompts/questionExtraction";
 import { QuestionArraySchema } from "@/lib/schemas/question";
-import { formatDisplayLabel, generateQuestionId } from "@/lib/schemas/questionNumbering";
-import { normalizeError, pipelineErrorToResponseBody } from "@/lib/errors";
+import {
+  assertPrintedOrder,
+  formatDisplayLabel,
+  generateQuestionId,
+} from "@/lib/schemas/questionNumbering";
+import { normalizeError, pipelineErrorToResponseBody, PipelineError } from "@/lib/errors";
 
 type RequestBody = { blobUrl: string };
 
@@ -59,6 +63,19 @@ export async function POST(request: Request): Promise<NextResponse> {
       id: generateQuestionId(question.number, question.subpart),
       displayLabel: formatDisplayLabel(question.number, question.subpart),
     }));
+
+    // The model is instructed to return questions in printed order; assert that
+    // invariant rather than silently trusting it, since the UI (and the
+    // extraction-order requirement) depends on it.
+    try {
+      assertPrintedOrder(questions);
+    } catch (orderError) {
+      throw new PipelineError(
+        "malformed-response",
+        (orderError as Error).message,
+        orderError,
+      );
+    }
 
     return NextResponse.json({ questions });
   } catch (error) {

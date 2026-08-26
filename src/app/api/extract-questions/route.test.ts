@@ -90,6 +90,20 @@ describe("POST /api/extract-questions", () => {
     expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
   });
 
+  it("returns 500 with malformed-response when the model returns questions out of printed order", async () => {
+    const outOfOrder = [
+      { ...VALID_QUESTIONS[0], id: "q1", number: "1", displayLabel: "1", order: 0 },
+      { ...VALID_QUESTIONS[0], id: "q3", number: "3", displayLabel: "3", order: 2 },
+      { ...VALID_QUESTIONS[0], id: "q2", number: "2", displayLabel: "2", order: 1 },
+    ];
+    callGeminiJsonMock.mockResolvedValueOnce({ questions: outOfOrder });
+
+    const response = await POST(makeRequest({ blobUrl: "https://blob.example/qp.pdf" }));
+    expect(response.status).toBe(500);
+    const json = await response.json();
+    expect(json.code).toBe("malformed-response");
+  });
+
   it("returns 500 with the normalized error code when fetchBlobFile rejects", async () => {
     fetchBlobFileMock.mockReset();
     fetchBlobFileMock.mockRejectedValueOnce(new Error("blob not found"));

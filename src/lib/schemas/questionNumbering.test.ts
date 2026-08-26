@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { assertPrintedOrder, formatDisplayLabel, generateQuestionId } from "./questionNumbering";
+
+const GROUND_TRUTH_FIXTURES = [
+  "question-paper-basic.ground-truth.json",
+  "question-paper-complex.ground-truth.json",
+  "question-paper-marks.ground-truth.json",
+];
 
 describe("formatDisplayLabel", () => {
   it("returns just the number for a top-level question", () => {
@@ -51,5 +59,35 @@ describe("assertPrintedOrder", () => {
 
   it("does not throw for an empty array", () => {
     expect(() => assertPrintedOrder([])).not.toThrow();
+  });
+
+  it.each(GROUND_TRUTH_FIXTURES)(
+    "passes for the real ground-truth question order in %s",
+    (filename) => {
+      const raw = readFileSync(
+        join(process.cwd(), "test-fixtures", filename),
+        "utf-8",
+      );
+      const groundTruthQuestions: unknown[] = JSON.parse(raw);
+      // Ground-truth fixtures store questions in printed order (their array
+      // index IS the expected order) but don't carry an `order` field
+      // themselves — assign one the same way the extraction route would.
+      const withOrder = groundTruthQuestions.map((q, order) => ({ ...(q as object), order }));
+
+      expect(() => assertPrintedOrder(withOrder)).not.toThrow();
+    },
+  );
+
+  it("catches a real regression: shuffling a real ground-truth fixture's order throws", () => {
+    const raw = readFileSync(
+      join(process.cwd(), "test-fixtures", "question-paper-basic.ground-truth.json"),
+      "utf-8",
+    );
+    const groundTruthQuestions: unknown[] = JSON.parse(raw);
+    const withOrder = groundTruthQuestions.map((q, order) => ({ ...(q as object), order }));
+    // Swap two entries to simulate the model returning them out of printed order.
+    [withOrder[1], withOrder[2]] = [withOrder[2], withOrder[1]];
+
+    expect(() => assertPrintedOrder(withOrder)).toThrow(/not in ascending/);
   });
 });

@@ -20,9 +20,11 @@ export default function Home() {
   const { slots, canStartMapping, selectFiles, removeFiles } = useUploadFlow();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState({ questionPaper: 0, answerSheet: 0 });
 
   async function handleStartMapping() {
     setUploadError(null);
+    setUploadProgress({ questionPaper: 0, answerSheet: 0 });
     setIsUploading(true);
     try {
       const [questionPaperFile, answerSheetFile] = await Promise.all([
@@ -30,8 +32,12 @@ export default function Home() {
         prepareSlotFileForUpload(slots.answerSheet.files),
       ]);
       const [questionPaperBlob, answerSheetBlob] = await Promise.all([
-        uploadFileToBlob(questionPaperFile),
-        uploadFileToBlob(answerSheetFile),
+        uploadFileToBlob(questionPaperFile, (percentage) =>
+          setUploadProgress((prev) => ({ ...prev, questionPaper: percentage })),
+        ),
+        uploadFileToBlob(answerSheetFile, (percentage) =>
+          setUploadProgress((prev) => ({ ...prev, answerSheet: percentage })),
+        ),
       ]);
       const params = new URLSearchParams({
         questionPaper: questionPaperBlob.url,
@@ -47,31 +53,36 @@ export default function Home() {
   }
 
   if (isUploading) {
+    const combinedProgress = Math.round(
+      (uploadProgress.questionPaper + uploadProgress.answerSheet) / 2,
+    );
     return (
       <AppShell>
-        <LoadingScreen message="Uploading…" />
+        <LoadingScreen message="Uploading…" progressPercent={combinedProgress} />
       </AppShell>
     );
   }
 
   return (
     <AppShell>
-      <div className="flex h-full min-h-[694px] flex-col items-center justify-center gap-9 rounded-[40px]">
-        <div className="flex flex-col items-center gap-5">
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-3">
-              <h1 className="text-[40px] font-bold tracking-[-0.04em] text-[#2b2b2b]">Upload</h1>
-              <h1 className="rounded-sm bg-[rgba(255,147,80,0.15)] px-2 py-1 text-[40px] font-bold tracking-[-0.04em] text-brand-orange">
+      <div className="flex h-full min-h-[500px] flex-col items-center justify-center gap-6 rounded-[40px] py-8 lg:min-h-[694px] lg:gap-9">
+        <div className="flex flex-col items-center gap-5 px-4">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-3">
+              <h1 className="text-[28px] font-bold tracking-[-0.04em] text-[#2b2b2b] lg:text-[40px]">
+                Upload
+              </h1>
+              <h1 className="rounded-sm bg-[rgba(255,147,80,0.15)] px-2 py-1 text-[28px] font-bold tracking-[-0.04em] text-brand-orange lg:text-[40px]">
                 Question Paper &amp; Answer Sheets
               </h1>
             </div>
-            <p className="text-xl text-ink-primary">Upload both files to get started</p>
+            <p className="text-base text-ink-primary lg:text-xl">Upload both files to get started</p>
           </div>
 
           <UploadHeroIllustration />
 
-          <div className="flex w-[789px] flex-col items-center rounded-2xl bg-surface-white/50 p-3">
-            <div className="flex h-[205px] w-full flex-1 gap-4">
+          <div className="flex w-full max-w-[789px] flex-col items-center rounded-2xl bg-surface-white/50 p-3">
+            <div className="flex w-full flex-1 flex-col gap-4 md:h-[205px] md:flex-row">
               <UploadSlotCard
                 label="Upload Question Paper"
                 accentLabel="Question Paper"
@@ -90,7 +101,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 px-4 text-center">
           <StartMappingButton enabled={canStartMapping} onClick={handleStartMapping} />
           <p className="text-sm text-ink-secondary/80">
             Once both files are uploaded, you&apos;ll able to map answers with questions

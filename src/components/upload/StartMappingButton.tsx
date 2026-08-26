@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 
 export type StartMappingButtonProps = {
   enabled: boolean;
@@ -18,7 +18,7 @@ export function StartMappingButton({ enabled, onClick }: StartMappingButtonProps
       }`}
     >
       <span>Start Mapping</span>
-      <ArrowRight className="size-5" />
+      <Image src="/illustrations/Arrow_Right-start-mapping-button-logo.svg" alt="" width={20} height={20} className="size-5" />
     </button>
   );
 }

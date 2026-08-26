@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardList, CircleHelp, Bell, Sparkles, ChevronDown, UserRound } from "lucide-react";
+import Image from "next/image";
 
 export function TopBar({ breadcrumb = "Exams", userName = "Madhur Rastogi" }: { breadcrumb?: string; userName?: string }) {
   return (
@@ -8,44 +8,41 @@ export function TopBar({ breadcrumb = "Exams", userName = "Madhur Rastogi" }: { 
         aria-label="Back"
         className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-white"
       >
-        <ArrowLeft className="size-6 text-ink-primary" />
+        <Image src="/illustrations/Arrow_Left-hori-nav-logo.svg" alt="" width={24} height={24} className="size-6" />
       </button>
 
       <div className="flex flex-1 items-center gap-2">
-        <ClipboardList className="size-5 text-surface-disabled" />
+        <Image src="/illustrations/exams-horizontal-nav-logo.svg" alt="" width={20} height={20} className="size-5 shrink-0" />
         <span className="text-base font-semibold text-surface-disabled">{breadcrumb}</span>
       </div>
 
-      <button
-        type="button"
-        aria-label="Help"
-        className="flex size-9 items-center justify-center rounded-full bg-surface-off-white"
-      >
-        <CircleHelp className="size-5 text-ink-primary" />
+      <button type="button" aria-label="Help" className="flex size-9 items-center justify-center">
+        <Image src="/illustrations/fst-nav-illustration.svg" alt="" width={36} height={36} />
       </button>
-      <button
-        type="button"
-        aria-label="Notifications"
-        className="relative flex size-9 items-center justify-center rounded-full bg-surface-off-white"
-      >
-        <Bell className="size-5 text-ink-primary" />
-        <span className="absolute right-2 top-2 size-1.5 rounded-full bg-danger" />
+      <button type="button" aria-label="Notifications" className="flex size-9 items-center justify-center">
+        <Image src="/illustrations/noti-illustration.svg" alt="" width={36} height={36} />
       </button>
-      <button
-        type="button"
-        aria-label="AI"
-        className="flex size-9 items-center justify-center rounded-full bg-surface-off-white"
-      >
-        <Sparkles className="size-5 text-brand-orange" />
+      <button type="button" aria-label="AI" className="flex size-9 items-center justify-center">
+        <Image src="/illustrations/gemini-illustration.svg" alt="" width={36} height={36} />
       </button>
 
       <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
-        <div className="flex size-8 items-center justify-center rounded-full bg-surface-off-white">
-          <UserRound className="size-5 text-ink-secondary" />
-        </div>
+        <Image
+          src="/illustrations/profile-avatar.svg"
+          alt=""
+          width={32}
+          height={32}
+          className="size-8 shrink-0 rounded-full object-cover"
+        />
         <div className="flex items-center gap-1">
           <span className="text-base font-semibold text-ink-primary">{userName}</span>
-          <ChevronDown className="size-4 text-ink-secondary" />
+          <Image
+            src="/illustrations/icon-toright-of-profilename-Chevron-down.svg"
+            alt=""
+            width={16}
+            height={16}
+            className="size-4"
+          />
         </div>
       </div>
     </header>

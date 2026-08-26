@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Upload } from "lucide-react";
+import Image from "next/image";
 
 export type DropzoneProps = {
   label: string;
@@ -52,7 +52,7 @@ export function Dropzone({ label, accentLabel, onFilesSelected, multiple = true 
       />
 
       <div className="flex size-12 items-center justify-center rounded-sm bg-surface-off-white p-1">
-        <Upload className="size-6 text-ink-primary" />
+        <Image src="/illustrations/upload-logo.svg" alt="" width={24} height={24} className="size-6" />
       </div>
 
       <div className="flex flex-col items-center gap-0.5 text-center">

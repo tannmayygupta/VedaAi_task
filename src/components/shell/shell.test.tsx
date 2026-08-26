@@ -30,10 +30,9 @@ describe("TopBar", () => {
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
   });
 
-  it("renders the notifications button with an unread indicator", () => {
-    const { container } = render(<TopBar />);
+  it("renders the notifications button (unread indicator is baked into the Figma-exported icon)", () => {
+    render(<TopBar />);
     const notificationsButton = screen.getByRole("button", { name: /notifications/i });
     expect(notificationsButton).toBeInTheDocument();
-    expect(container.querySelector(".bg-danger")).toBeInTheDocument();
   });
 });

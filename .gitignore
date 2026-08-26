@@ -20,5 +20,12 @@ next-env.d.ts
 bash.exe.stackdump
 .claude/
 
+# Internal build-process tracking docs (PRD/tracker/decision-log/research) and the
+# Claude Code project-instructions file — kept locally for development discipline,
+# intentionally excluded from the public repo. APPROACH.md (submission writeup) is
+# NOT excluded — it lives at the repo root, not under docs/.
+CLAUDE.md
+/docs/
+
 # Copied from node_modules/pdfjs-dist by scripts/copy-pdf-worker.mjs (postinstall)
 /public/pdf.worker.min.mjs
