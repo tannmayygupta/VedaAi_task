@@ -338,3 +338,68 @@ rather than looping or corrupting downstream state.
 retry and surface as a `"malformed-response"` error to the teacher — this needs a clear, honest
 error state in Phase 7's UI (not a silent failure), and is an explicit assumption/limitation to
 call out in the final submission writeup.
+
+## [2026-08-26] Question extraction prompt: one synthesized prompt, verified on 3 fixtures, not a multi-candidate bake-off
+**Decision:** Phase 3 ships a single, carefully-written extraction prompt
+(`src/lib/gemini/prompts/questionExtraction.ts`) that combines the strongest ideas from the
+pre-Phase-3 research draft (`docs/RESEARCH.md` §8): explicit rule priority order, an inline
+worked example specifically for the trickiest rule (sub-part splitting), and an instruction to
+mentally enumerate every question before committing to output. It was verified for real against
+three synthetic question papers (basic with a 3-way sub-part split; a "complex" paper with a
+numbering gap and a Roman-numeral section; a "marks" paper with 5 different marks notations plus
+one no-marks question) — **100% exact-match accuracy (9/9, 6/6, 6/6)** on number, sub-part, and
+`marksTotal` for every entry, order included.
+
+**Why:** The original plan was a 4-way empirical bake-off (baseline / concise / few-shot /
+chain-of-thought variants, each tested in parallel via independent agents against the same real
+API). That plan assumed genuine agent parallelism; a harness issue mid-launch (see below) meant
+only serial execution was actually available, at which point running 4 sequential real-API
+experiments costs real time for comparative insight that's less valuable once you can't get it
+"for free" from parallelism. Writing one prompt that already incorporates the bake-off's best
+ideas (few-shot example + concise rule statements + explicit ordering instruction) and verifying
+it directly against real fixtures was the more efficient path to the same goal — a
+well-functioning extraction prompt — and the 100% real-world result across three deliberately
+adversarial fixtures means there was no accuracy gap left to find via further comparison.
+
+**Operational note (not a project decision, but why the plan changed):** the parallel-agent
+launch for this phase hit a harness quirk — the first `Agent(fork)` call's directive appears to
+have executed inline rather than truly backgrounded, and subsequent fork launches in the same
+batch correctly refused with "forks can't spawn forks." Some of the batch's file-creation tasks
+did complete via an unclear execution path despite the error surfaced to the parent; others
+(this prompt, the route wiring, one fixture test scaffold) did not and were completed directly
+afterward. Work was verified file-by-file against disk state rather than trusted from tool output
+alone, given the inconsistency.
+
+**Alternatives considered:** Running the 4-candidate bake-off anyway, serially — rejected once
+serial cost was weighed against the fact that a single synthesized prompt could plausibly already
+capture most of the accuracy gains a bake-off would find, which the 100%-accuracy result then
+confirmed empirically rather than just assumed.
+
+**Trade-offs / risks:** Without the bake-off, there's no empirical evidence for exactly how much
+each individual technique (few-shot vs. conciseness vs. explicit ordering) contributed — only
+that the combination works. Not a real cost here since the goal was a working prompt, not a
+research paper on prompt engineering technique attribution. If real-world (non-synthetic)
+question papers later reveal accuracy gaps, particularly messier layouts or handwritten
+annotations on printed papers, revisit with a more adversarial fixture and iterate the prompt
+then.
+
+## [2026-08-26] Derived fields (`id`, `displayLabel`) are recomputed server-side, never trusted from the model
+**Decision:** After schema validation, the extract-questions route recomputes every question's
+`id` and `displayLabel` deterministically from its `number`/`subpart` (via
+`generateQuestionId`/`formatDisplayLabel` in `src/lib/schemas/questionNumbering.ts`), overwriting
+whatever the model itself produced for those two fields.
+
+**Why:** Real-API verification surfaced exactly the kind of small inconsistency this guards
+against: the model formatted one sub-part's `displayLabel` as `"5(a)"` (no space) instead of the
+intended `"5 (a)"` — functionally fine (schema-valid, unambiguous) but visually inconsistent, and
+exactly the kind of thing that would read as sloppy in the UI if enough responses drifted in
+small formatting ways. Since both fields are 100% mechanically derivable from `number`+`subpart`,
+there's no reason to depend on the model's string formatting for them at all.
+
+**Alternatives considered:** Prompting harder for exact formatting — rejected: chasing
+formatting consistency through prompt wording is fragile and wastes prompt "attention" on
+something code can guarantee deterministically for free.
+
+**Trade-offs / risks:** None meaningful — this is strictly safer than trusting model output for
+data that's fully derivable, and it's covered by existing unit tests
+(`questionNumbering.test.ts`) rather than needing new ones.

@@ -1,0 +1,65 @@
+[
+  {
+    "number": "1",
+    "subpart": null,
+    "displayLabel": "1",
+    "text": "Name the largest planet in our solar system.",
+    "marksTotal": null
+  },
+  {
+    "number": "2",
+    "subpart": null,
+    "displayLabel": "2",
+    "text": "Which river is known as the lifeline of Egypt?",
+    "marksTotal": null
+  },
+  {
+    "number": "3",
+    "subpart": null,
+    "displayLabel": "3",
+    "text": "Name the currency used in Japan.",
+    "marksTotal": 2
+  },
+  {
+    "number": "4",
+    "subpart": null,
+    "displayLabel": "4",
+    "text": "List the seven continents of the world.",
+    "marksTotal": 3
+  },
+  {
+    "number": "5",
+    "subpart": "a",
+    "displayLabel": "5 (a)",
+    "text": "Name one advantage of two neighbouring states sharing a free-trade agreement.",
+    "marksTotal": 2
+  },
+  {
+    "number": "5",
+    "subpart": "b",
+    "displayLabel": "5 (b)",
+    "text": "Suggest one challenge that can arise from a long shared border.",
+    "marksTotal": 2
+  },
+  {
+    "number": "5",
+    "subpart": "c",
+    "displayLabel": "5 (c)",
+    "text": "Explain briefly why border disputes are often difficult to resolve.",
+    "marksTotal": 3
+  },
+  {
+    "number": "6",
+    "subpart": null,
+    "displayLabel": "6",
+    "text": "Name the tallest mountain in the world.",
+    "marksTotal": 1
+  },
+  {
+    "number": "7",
+    "subpart": null,
+    "displayLabel": "7",
+    "text": "Which ocean is the largest by surface area?",
+    "marksTotal": null
+  }
+]

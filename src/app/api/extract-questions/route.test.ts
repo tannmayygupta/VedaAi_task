@@ -5,36 +5,15 @@ vi.mock("@/lib/gemini/fetchBlobFile", () => ({
   fetchBlobFile: (...args: unknown[]) => fetchBlobFileMock(...args),
 }));
 
-class MockPipelineError extends Error {
-  code: string;
-  constructor(message: string, code: string) {
-    super(message);
-    this.code = code;
-  }
-}
-
-const normalizeErrorMock = vi.fn((error: unknown, fallbackCode = "unknown") => {
-  if (error instanceof MockPipelineError) return error;
-  return new MockPipelineError(error instanceof Error ? error.message : "Unknown error", fallbackCode);
-});
-const pipelineErrorToResponseBodyMock = vi.fn((error: MockPipelineError) => ({
-  error: error.message,
-  code: error.code,
+const callGeminiJsonMock = vi.fn();
+vi.mock("@/lib/gemini/client", () => ({
+  callGeminiJson: (...args: unknown[]) => callGeminiJsonMock(...args),
 }));
 
-vi.mock("@/lib/errors", () => ({
-  PipelineError: MockPipelineError,
-  normalizeError: (...args: [unknown, string?]) => normalizeErrorMock(...args),
-  pipelineErrorToResponseBody: (...args: [MockPipelineError]) => pipelineErrorToResponseBodyMock(...args),
-}));
+// Real schemas, prompt module, error helpers, and withSchemaValidation are used
+// as-is (not mocked) so this test exercises the route's actual wiring, only
+// mocking the two real I/O boundaries: the Blob fetch and the Gemini call.
 
-vi.mock("@/lib/schemas/question", () => ({
-  QuestionArraySchema: {
-    safeParse: (data: unknown) => ({ success: true, data }),
-  },
-}));
-
-// Import after mocks are registered so the route picks up the mocked modules.
 const { POST } = await import("./route");
 
 function makeRequest(body: unknown): Request {
@@ -45,11 +24,28 @@ function makeRequest(body: unknown): Request {
   });
 }
 
+const VALID_QUESTIONS = [
+  {
+    id: "q1",
+    number: "1",
+    subpart: null,
+    displayLabel: "1",
+    text: "What is the powerhouse of the cell?",
+    marksTotal: null,
+    pageIndex: 0,
+    order: 0,
+  },
+];
+
 describe("POST /api/extract-questions", () => {
   beforeEach(() => {
     fetchBlobFileMock.mockReset();
-    normalizeErrorMock.mockClear();
-    pipelineErrorToResponseBodyMock.mockClear();
+    callGeminiJsonMock.mockReset();
+    fetchBlobFileMock.mockResolvedValue({
+      bytes: new ArrayBuffer(0),
+      mimeType: "application/pdf",
+      sizeBytes: 0,
+    });
   });
 
   it("returns 400 when blobUrl is missing", async () => {
@@ -62,21 +58,40 @@ describe("POST /api/extract-questions", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns 200 with a questions array when fetchBlobFile succeeds", async () => {
-    fetchBlobFileMock.mockResolvedValueOnce({
-      bytes: new ArrayBuffer(0),
-      mimeType: "application/pdf",
-      sizeBytes: 0,
-    });
+  it("returns 200 with a validated questions array on a well-formed model response", async () => {
+    callGeminiJsonMock.mockResolvedValueOnce({ questions: VALID_QUESTIONS });
 
     const response = await POST(makeRequest({ blobUrl: "https://blob.example/qp.pdf" }));
     expect(response.status).toBe(200);
     const json = await response.json();
-    expect(Array.isArray(json.questions)).toBe(true);
-    expect(json.questions.length).toBeGreaterThan(0);
+    expect(json.questions).toEqual(VALID_QUESTIONS);
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries once and succeeds when the first model response is malformed", async () => {
+    callGeminiJsonMock
+      .mockResolvedValueOnce({ questions: [{ bogus: true }] })
+      .mockResolvedValueOnce({ questions: VALID_QUESTIONS });
+
+    const response = await POST(makeRequest({ blobUrl: "https://blob.example/qp.pdf" }));
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.questions).toEqual(VALID_QUESTIONS);
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns 502 when the model response is malformed on both attempts", async () => {
+    callGeminiJsonMock.mockResolvedValue({ questions: [{ bogus: true }] });
+
+    const response = await POST(makeRequest({ blobUrl: "https://blob.example/qp.pdf" }));
+    expect(response.status).toBe(502);
+    const json = await response.json();
+    expect(json.code).toBe("malformed-response");
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
   });
 
   it("returns 500 with the normalized error code when fetchBlobFile rejects", async () => {
+    fetchBlobFileMock.mockReset();
     fetchBlobFileMock.mockRejectedValueOnce(new Error("blob not found"));
 
     const response = await POST(makeRequest({ blobUrl: "https://blob.example/missing.pdf" }));

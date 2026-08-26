@@ -1,30 +1,24 @@
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { fetchBlobFile } from "@/lib/gemini/fetchBlobFile";
-import { QuestionArraySchema, type Question } from "@/lib/schemas/question";
+import { callGeminiJson } from "@/lib/gemini/client";
+import { withSchemaValidation } from "@/lib/gemini/withSchemaValidation";
+import { textPart, fileBytesToPart } from "@/lib/gemini/part";
+import {
+  QUESTION_EXTRACTION_SYSTEM_PROMPT,
+  buildQuestionExtractionUserPrompt,
+} from "@/lib/gemini/prompts/questionExtraction";
+import { QuestionArraySchema } from "@/lib/schemas/question";
+import { formatDisplayLabel, generateQuestionId } from "@/lib/schemas/questionNumbering";
 import { normalizeError, pipelineErrorToResponseBody } from "@/lib/errors";
 
 type RequestBody = { blobUrl: string };
 
-// TODO(Phase 3): replace this stub with a real Gemini call (see docs/PRD.md §6 and
-// docs/RESEARCH.md §8 for the drafted prompt/schema) that actually extracts questions
-// from the fetched file's bytes/mimeType. This stub exists only to prove the route's
-// request/response plumbing works end-to-end before real extraction logic lands.
-async function extractQuestionsStub(_file: { bytes: ArrayBuffer; mimeType: string }): Promise<Question[]> {
-  return [
-    {
-      id: "q1",
-      number: "1",
-      subpart: null,
-      displayLabel: "1",
-      text: "Placeholder question — real extraction lands in Phase 3.",
-      marksTotal: null,
-      pageIndex: 0,
-      order: 0,
-    },
-  ];
-}
+const ResponseSchema = z.object({ questions: QuestionArraySchema });
+const responseJsonSchema = z.toJSONSchema(ResponseSchema);
 
 export async function POST(request: Request): Promise<NextResponse> {
   let body: RequestBody;
@@ -40,15 +34,33 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     const file = await fetchBlobFile(body.blobUrl);
-    const questions = await extractQuestionsStub(file);
-    const validated = QuestionArraySchema.safeParse(questions);
-    if (!validated.success) {
-      return NextResponse.json(
-        { error: "Extraction produced an invalid result", code: "malformed-response" },
-        { status: 502 },
-      );
+
+    const attempt = async (correctionNote?: string) =>
+      callGeminiJson({
+        parts: [
+          textPart(QUESTION_EXTRACTION_SYSTEM_PROMPT),
+          textPart(buildQuestionExtractionUserPrompt()),
+          fileBytesToPart(file.bytes, file.mimeType),
+          ...(correctionNote ? [textPart(correctionNote)] : []),
+        ],
+        responseJsonSchema,
+      });
+
+    const result = await withSchemaValidation(ResponseSchema, attempt);
+    if (!result.ok) {
+      return NextResponse.json(pipelineErrorToResponseBody(result.error), { status: 502 });
     }
-    return NextResponse.json({ questions: validated.data });
+
+    // displayLabel and id are fully derivable from number+subpart — recompute them
+    // deterministically rather than trust the model's own formatting (observed
+    // inconsistency during Phase 3 verification: "5(a)" vs the intended "5 (a)").
+    const questions = result.data.questions.map((question) => ({
+      ...question,
+      id: generateQuestionId(question.number, question.subpart),
+      displayLabel: formatDisplayLabel(question.number, question.subpart),
+    }));
+
+    return NextResponse.json({ questions });
   } catch (error) {
     const pipelineError = normalizeError(error, "unreadable-file");
     return NextResponse.json(pipelineErrorToResponseBody(pipelineError), { status: 500 });

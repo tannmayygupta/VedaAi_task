@@ -15,7 +15,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 0 | Foundations & Tooling | 🟡 | — | 2026-08-26 | |
 | 1 | Upload + Loading UI | 🟢 | §4, §5 | 2026-08-26 | 2026-08-26 |
 | 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
-| 3 | Question Extraction | 🔲 | §6 | | |
+| 3 | Question Extraction | 🟡 | §6 | 2026-08-26 | |
 | 4 | Answer Extraction + Mapping | 🔲 | §7 | | |
 | 5 | Grading & Feedback | 🔲 | §8 | | |
 | 6 | Mapping Screen UI (core) | 🔲 | §9 | | |
@@ -265,40 +265,64 @@ end-to-end verification completed same day)
 **Status:** 🔲 Not Started
 **Goal:** Given a real question paper, get back an accurate, ordered `Question[]` per PRD §6.
 
-**Prerequisite:** Need 1–2 real sample question papers (PDF or images) to test against —
-**blocked on the user providing these, or me sourcing/generating reasonable ones** if none are
-provided. Ideally at least one paper with labelled sub-parts (e.g. `11(a)`/`11(b)`) to exercise
-that rule specifically.
+**Prerequisite:** Real sample question papers — resolved by generating 3 original synthetic
+fixtures via `pdfkit` (no external/copyrighted content needed): `question-paper-basic.pdf`
+(sub-parts, mixed marks), `question-paper-complex.pdf` (numbering gap + Roman-numeral section),
+`question-paper-marks.pdf` (5 marks-notation variants + one no-marks question). Generator
+scripts + ground-truth JSON committed under `scripts/fixtures/` and `test-fixtures/`.
 
 **Tasks:**
-- [ ] Prompt design for question extraction (order preservation, sub-part separation, verbatim
-      numbering, optional marks capture)
-- [ ] Wire prompt + schema through the Phase 2 Gemini wrapper
-- [ ] Render extracted questions in a bare-bones list (no styling polish yet — that's Phase 6) to
-      inspect output during development
+- [x] Prompt design — `src/lib/gemini/prompts/questionExtraction.ts` (system prompt with rule
+      priority order + an inline worked example for sub-part splitting, plus a user-prompt
+      builder for `order`/`id` instructions)
+- [x] Wired through the Phase 2 Gemini wrapper — `src/app/api/extract-questions/route.ts` now
+      calls `callGeminiJson` + `withSchemaValidation` with the real prompt, replacing the Phase 2
+      stub; also post-processes `id`/`displayLabel` deterministically (see decision log) rather
+      than trusting the model's own formatting of fully-derivable fields
+- [x] Bare-bones question list debug view — `src/components/dev/QuestionListDebugView.tsx` +
+      `src/app/dev/questions/page.tsx` (paste raw JSON, render it) — visually verified live
 
-**Tests (Vitest):**
-- [ ] Given a saved real Gemini response fixture (captured from a real run), parsing produces
-      correctly ordered `Question[]` with sub-parts as separate entries
-- [ ] Numbering/display-label formatting logic (e.g. `"11"` + `"a"` → `"11 (a)"`) unit tested in
-      isolation
+**Tests (Vitest):** 8 new tests across 3 new files (140 total project-wide) —
+- [x] Fixture-based test: a captured real Gemini response (`test-fixtures/sample-gemini-question-
+      response.json`) validates against `QuestionArraySchema`, preserves ascending order, keeps
+      a 3-way sub-part split as separate entries, and preserves both null and non-null
+      `marksTotal` correctly typed
+- [x] Prompt content smoke test (covers every PRD §6 rule keyword)
+- [x] Route test rewritten for the real wiring: 200 on a well-formed response, retry-then-succeed
+      on a malformed-then-valid response, 502 when malformed on both attempts, 500 on blob-fetch
+      failure — `callGeminiJson` mocked, everything else (schema, prompt, `withSchemaValidation`,
+      errors) real
+- [x] `questionNumbering.ts` (`formatDisplayLabel`, `generateQuestionId`, `assertPrintedOrder`) —
+      unit tested in isolation, landed with a different-but-equally-valid design than originally
+      sketched (assert-and-throw instead of silent re-sort for order — arguably safer)
 
-**Manual/real-API verification (real documents, real API — no mocks):**
-- [ ] Run against sample question paper #1, manually verify every question was extracted, in
-      order, with correct numbering — log the result (pass/fail + notes) below
-- [ ] Run against sample question paper #2 (with sub-parts), manually verify sub-part separation
-      specifically
-- [ ] Try a paper with non-obvious layout (multi-column, or numbering with gaps) if available
+**Manual/real-API verification (real documents, real API — no mocks):** ✅ **100% accuracy on
+all 3 fixtures.**
+- [x] `question-paper-basic.pdf` — 9/9 exact matches (order, number, subpart, marksTotal),
+      including the 3-way sub-part split (5a/5b/5c)
+- [x] `question-paper-complex.pdf` — 6/6 exact matches, correctly preserved the Roman-numeral
+      section (i/ii/iii) AND the numbering gap (7 → 9, no invented "8")
+- [x] `question-paper-marks.pdf` — 6/6 exact matches across 5 different marks-notation styles
+      plus the one no-marks question correctly returning `null`
 
-**Definition of Done:** Unit tests green; at least 2 real documents verified with 100% of
-questions correctly extracted, ordered, and numbered (or documented gaps/limitations if not).
+One real inconsistency found and fixed: the model's own `displayLabel` string formatting was
+occasionally inconsistent (`"5(a)"` vs the intended `"5 (a)"`) — fixed by never trusting the
+model for `id`/`displayLabel` at all, recomputing both deterministically server-side.
+
+**Definition of Done:** ✅ exceeded — 3 real documents (not just the minimum 2), 100% extraction
+accuracy on all of them, all unit tests green, lint/typecheck clean.
 
 **Test results log:**
 | Sample doc | Questions expected | Extracted correctly | Notes |
 |---|---|---|---|
-| | | | |
+| question-paper-basic.pdf | 9 | 9/9 | 3-way sub-part split (5a/5b/5c) correct |
+| question-paper-complex.pdf | 6 | 6/6 | Roman numerals + numbering gap (7→9) both correct |
+| question-paper-marks.pdf | 6 | 6/6 | 5 marks-notation styles + 1 null-marks correct |
 
-**Decisions made this phase:** _(fill in — prompt strategy, any parsing edge cases discovered)_
+**Decisions made this phase:** "Question extraction prompt: one synthesized prompt, verified on 3
+fixtures, not a multi-candidate bake-off" (incl. an operational note on a parallel-agent harness
+quirk hit this phase); "Derived fields (`id`, `displayLabel`) are recomputed server-side, never
+trusted from the model" (both in `docs/DECISIONS.md`).
 
 **Review sign-off:** [ ] User approved — date: ____
 

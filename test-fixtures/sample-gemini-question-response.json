@@ -1,0 +1,15 @@
+{
+  "_placeholder": false,
+  "_note": "Real captured Gemini response (model gemini-3.6-flash), from a real API call against test-fixtures/question-paper-basic.pdf during Phase 3 verification on 2026-08-26. Captured before the route's deterministic id/displayLabel post-processing (see docs/DECISIONS.md) — displayLabel '5(a)' below is the model's raw (slightly inconsistent) formatting, kept as-is to document why that post-processing step exists.",
+  "questions": [
+    { "id": "q1", "number": "1", "subpart": null, "displayLabel": "1", "text": "Name the largest planet in our solar system.", "marksTotal": null, "pageIndex": 0, "order": 0 },
+    { "id": "q2", "number": "2", "subpart": null, "displayLabel": "2", "text": "Which river is known as the lifeline of Egypt?", "marksTotal": null, "pageIndex": 0, "order": 1 },
+    { "id": "q3", "number": "3", "subpart": null, "displayLabel": "3", "text": "Name the currency used in Japan.", "marksTotal": 2, "pageIndex": 0, "order": 2 },
+    { "id": "q4", "number": "4", "subpart": null, "displayLabel": "4", "text": "List the seven continents of the world.", "marksTotal": 3, "pageIndex": 0, "order": 3 },
+    { "id": "q5-a", "number": "5", "subpart": "a", "displayLabel": "5(a)", "text": "Name one advantage of two neighbouring states sharing a free-trade agreement.", "marksTotal": 2, "pageIndex": 0, "order": 4 },
+    { "id": "q5-b", "number": "5", "subpart": "b", "displayLabel": "5(b)", "text": "Suggest one challenge that can arise from a long shared border.", "marksTotal": 2, "pageIndex": 0, "order": 5 },
+    { "id": "q5-c", "number": "5", "subpart": "c", "displayLabel": "5(c)", "text": "Explain briefly why border disputes are often difficult to resolve.", "marksTotal": 3, "pageIndex": 0, "order": 6 },
+    { "id": "q6", "number": "6", "subpart": null, "displayLabel": "6", "text": "Name the tallest mountain in the world.", "marksTotal": 1, "pageIndex": 0, "order": 7 },
+    { "id": "q7", "number": "7", "subpart": null, "displayLabel": "7", "text": "Which ocean is the largest by surface area?", "marksTotal": null, "pageIndex": 0, "order": 8 }
+  ]
+}
