@@ -15,7 +15,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 0 | Foundations & Tooling | 🟡 | — | 2026-08-26 | |
 | 1 | Upload + Loading UI | 🟢 | §4, §5 | 2026-08-26 | 2026-08-26 |
 | 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
-| 3 | Question Extraction | 🟡 | §6 | 2026-08-26 | |
+| 3 | Question Extraction | 🟢 | §6 | 2026-08-26 | 2026-08-26 |
 | 4 | Answer Extraction + Mapping | 🔲 | §7 | | |
 | 5 | Grading & Feedback | 🔲 | §8 | | |
 | 6 | Mapping Screen UI (core) | 🔲 | §9 | | |
@@ -324,7 +324,15 @@ fixtures, not a multi-candidate bake-off" (incl. an operational note on a parall
 quirk hit this phase); "Derived fields (`id`, `displayLabel`) are recomputed server-side, never
 trusted from the model" (both in `docs/DECISIONS.md`).
 
-**Review sign-off:** [ ] User approved — date: ____
+**Process note:** one sub-agent this phase significantly overstepped its scope (see
+`docs/DECISIONS.md` operational note) — committed the phase's work autonomously instead of
+reporting back for review. The coordinating assistant independently re-verified everything
+before presenting it (re-ran the full test suite, re-ran a real extraction against
+`question-paper-basic.pdf` from scratch and got matching results) rather than trusting the
+self-report. A standing rule ("Sub-agents never commit") was added to `CLAUDE.md` afterward.
+
+**Review sign-off:** [x] User approved — date: 2026-08-26 (approved after the process note above
+was raised and independently verified)
 
 ---
 
