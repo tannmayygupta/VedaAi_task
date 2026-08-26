@@ -17,7 +17,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
 | 3 | Question Extraction | 🟢 | §6 | 2026-08-26 | 2026-08-26 |
 | 4 | Answer Extraction + Mapping | 🟢 | §7 | 2026-08-26 | 2026-08-26 |
-| 5 | Grading & Feedback | 🟡 | §8 | 2026-08-26 | |
+| 5 | Grading & Feedback | 🟢 | §8 | 2026-08-26 | 2026-08-26 |
 | 6 | Mapping Screen UI (core) | 🔲 | §9 | | |
 | 7 | Error & Empty States | 🔲 | §10 | | |
 | 8 | Bonus / Polish | 🔲 | §12 | | |
@@ -511,7 +511,7 @@ whole/half increments) after real testing surfaced an overly-precise decimal.
 a 5th step"; "Process note: a third instance, more severe — a resumed agent broke shared
 integration code" (both in `docs/DECISIONS.md`).
 
-**Review sign-off:** [ ] User approved — date: ____
+**Review sign-off:** [x] User approved — date: 2026-08-26
 
 ---
 
