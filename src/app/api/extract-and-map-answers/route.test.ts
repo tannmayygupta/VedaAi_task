@@ -69,6 +69,17 @@ function sampleRegion(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function sampleGrading(overrides: Record<string, unknown> = {}) {
+  return {
+    questionId: "q1",
+    marksAwarded: 2,
+    marksTotal: 2,
+    correctness: "correct",
+    feedback: "Correct and complete answer.",
+    ...overrides,
+  };
+}
+
 describe("POST /api/extract-and-map-answers", () => {
   beforeEach(() => {
     fetchBlobFileMock.mockReset();
@@ -100,13 +111,16 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns 200 with mapped regions for a well-formed model response", async () => {
+  it("returns 200 with mapped regions and gradings for a well-formed model response", async () => {
     fetchBlobFileMock.mockResolvedValueOnce({
       bytes: new ArrayBuffer(8),
       mimeType: "application/pdf",
       sizeBytes: 8,
     });
-    callGeminiJsonMock.mockResolvedValueOnce({ regions: [sampleRegion()] });
+    callGeminiJsonMock.mockResolvedValueOnce({
+      regions: [sampleRegion()],
+      gradings: [sampleGrading()],
+    });
 
     const response = await POST(
       makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
@@ -115,6 +129,24 @@ describe("POST /api/extract-and-map-answers", () => {
     const json = await response.json();
     expect(json.regions).toHaveLength(1);
     expect(json.regions[0].matchedQuestionId).toBe("q1");
+    expect(json.gradings).toHaveLength(1);
+    expect(json.gradings[0].questionId).toBe("q1");
+    expect(json.summary.totalAwarded).toBe(2);
+    expect(json.summary.totalPossible).toBe(2);
+  });
+
+  it("returns 502 when gradings are missing a required question id", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: new ArrayBuffer(8),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValue({ regions: [sampleRegion()], gradings: [] });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(502);
   });
 
   it("nulls out matchedQuestionId if the model references a question id that wasn't provided", async () => {
@@ -125,6 +157,7 @@ describe("POST /api/extract-and-map-answers", () => {
     });
     callGeminiJsonMock.mockResolvedValueOnce({
       regions: [sampleRegion({ matchedQuestionId: "does-not-exist", matchConfidence: 0.9 })],
+      gradings: [sampleGrading()],
     });
 
     const response = await POST(
@@ -143,8 +176,8 @@ describe("POST /api/extract-and-map-answers", () => {
       sizeBytes: 8,
     });
     callGeminiJsonMock
-      .mockResolvedValueOnce({ regions: [{ id: "r1" }] }) // malformed
-      .mockResolvedValueOnce({ regions: [sampleRegion()] }); // valid retry
+      .mockResolvedValueOnce({ regions: [{ id: "r1" }], gradings: [] }) // malformed
+      .mockResolvedValueOnce({ regions: [sampleRegion()], gradings: [sampleGrading()] }); // valid retry
 
     const response = await POST(
       makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
@@ -159,7 +192,7 @@ describe("POST /api/extract-and-map-answers", () => {
       mimeType: "application/pdf",
       sizeBytes: 8,
     });
-    callGeminiJsonMock.mockResolvedValue({ regions: [{ id: "r1" }] });
+    callGeminiJsonMock.mockResolvedValue({ regions: [{ id: "r1" }], gradings: [] });
 
     const response = await POST(
       makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
@@ -167,13 +200,13 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(response.status).toBe(502);
   });
 
-  it("returns 200 with an empty regions array when the model returns none", async () => {
+  it("returns 200 with empty regions/gradings when there are no questions", async () => {
     fetchBlobFileMock.mockResolvedValueOnce({
       bytes: new ArrayBuffer(8),
       mimeType: "application/pdf",
       sizeBytes: 8,
     });
-    callGeminiJsonMock.mockResolvedValueOnce({ regions: [] });
+    callGeminiJsonMock.mockResolvedValueOnce({ regions: [], gradings: [] });
 
     const response = await POST(
       makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: [] }),
@@ -181,6 +214,8 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(response.status).toBe(200);
     const json = await response.json();
     expect(json.regions).toEqual([]);
+    expect(json.gradings).toEqual([]);
+    expect(json.summary.totalQuestionCount).toBe(0);
   });
 
   it("returns 500 when fetchBlobFile rejects", async () => {

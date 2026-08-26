@@ -11,14 +11,12 @@ import {
   ANSWER_MAPPING_SYSTEM_PROMPT,
   buildAnswerMappingUserPrompt,
 } from "@/lib/gemini/prompts/answerMapping";
-import { AnswerRegionArraySchema } from "@/lib/schemas/answerRegion";
+import { buildMappingResponseSchema } from "@/lib/schemas/mappingResponse";
+import { buildMappingSummary } from "@/lib/mapping/mappingSummary";
 import { QuestionArraySchema, type Question } from "@/lib/schemas/question";
 import { normalizeError, pipelineErrorToResponseBody } from "@/lib/errors";
 
 type RequestBody = { blobUrl: string; questions: Question[] };
-
-const ResponseSchema = z.object({ regions: AnswerRegionArraySchema });
-const responseJsonSchema = z.toJSONSchema(ResponseSchema);
 
 export async function POST(request: Request): Promise<NextResponse> {
   let body: RequestBody;
@@ -49,6 +47,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
   const questions = questionsCheck.data;
+  const ResponseSchema = buildMappingResponseSchema(questions.map((q) => q.id));
+  const responseJsonSchema = z.toJSONSchema(ResponseSchema);
 
   try {
     const file = await fetchBlobFile(body.blobUrl);
@@ -78,8 +78,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         ? { ...region, matchedQuestionId: null, matchConfidence: 0 }
         : region,
     );
+    const gradings = result.data.gradings;
+    const summary = buildMappingSummary(gradings, regions);
 
-    return NextResponse.json({ regions });
+    return NextResponse.json({ regions, gradings, summary });
   } catch (error) {
     const pipelineError = normalizeError(error, "unreadable-file");
     return NextResponse.json(pipelineErrorToResponseBody(pipelineError), { status: 500 });

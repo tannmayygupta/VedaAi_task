@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ANSWER_MAPPING_SYSTEM_PROMPT, buildAnswerMappingUserPrompt } from "./answerMapping";
 import type { Question } from "@/lib/schemas/question";
+import { DEFAULT_MARKS_WHEN_UNSTATED } from "@/lib/mapping/defaultMarks";
 
 describe("answer mapping prompt", () => {
   it("covers every PRD §7 matching-priority rule", () => {
@@ -35,5 +36,22 @@ describe("answer mapping prompt", () => {
     const prompt = buildAnswerMappingUserPrompt(questions);
     expect(prompt).toContain("Sample question");
     expect(prompt).toContain('"id":"q1"');
+  });
+
+  it("instructs grading every question, including unanswered ones", () => {
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/GRADE every question/i);
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/unanswered/i);
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/marksAwarded/);
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/correctness/);
+  });
+
+  it("references the shared default-marks fallback for questions with no stated marks", () => {
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toContain(String(DEFAULT_MARKS_WHEN_UNSTATED));
+  });
+
+  it("instructs the user prompt to request both regions and gradings", () => {
+    const prompt = buildAnswerMappingUserPrompt([]);
+    expect(prompt).toMatch(/"regions"/);
+    expect(prompt).toMatch(/"gradings"/);
   });
 });

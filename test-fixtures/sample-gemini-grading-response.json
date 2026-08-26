@@ -1,0 +1,48 @@
+{
+  "_placeholder": true,
+  "_note": "Hand-authored placeholder — replace with a real captured Gemini response once Phase 5's final grading prompt is chosen and run for real. See docs/TRACKER.md Phase 5.",
+  "gradings": [
+    {
+      "questionId": "q3",
+      "marksAwarded": 2,
+      "marksTotal": 2,
+      "correctness": "correct",
+      "feedback": "Correct! Yen is indeed the currency used in Japan."
+    },
+    {
+      "questionId": "q4",
+      "marksAwarded": 2,
+      "marksTotal": 3,
+      "correctness": "partial",
+      "feedback": "Good attempt — you listed five of the seven continents correctly, but missed South America and Antarctica."
+    },
+    {
+      "questionId": "q5-c",
+      "marksAwarded": 1,
+      "marksTotal": 3,
+      "correctness": "partial",
+      "feedback": "You touched on the general idea, but the answer lacks specific reasons why border disputes are hard to resolve, such as competing historical claims or resource interests."
+    },
+    {
+      "questionId": "q1",
+      "marksAwarded": 0,
+      "marksTotal": 2,
+      "correctness": "incorrect",
+      "feedback": "Not quite — the correct answer is Jupiter, not Saturn. Jupiter is the largest planet in our solar system by both mass and volume."
+    },
+    {
+      "questionId": "q2",
+      "marksAwarded": 0,
+      "marksTotal": 2,
+      "correctness": "unanswered",
+      "feedback": "No answer was provided for this question. The correct answer is the Nile."
+    },
+    {
+      "questionId": "q7",
+      "marksAwarded": 2,
+      "marksTotal": 2,
+      "correctness": "correct",
+      "feedback": "Correct! The Pacific Ocean is the largest ocean by surface area."
+    }
+  ]
+}

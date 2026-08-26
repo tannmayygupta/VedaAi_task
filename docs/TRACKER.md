@@ -17,7 +17,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
 | 3 | Question Extraction | 🟢 | §6 | 2026-08-26 | 2026-08-26 |
 | 4 | Answer Extraction + Mapping | 🟢 | §7 | 2026-08-26 | 2026-08-26 |
-| 5 | Grading & Feedback | 🔲 | §8 | | |
+| 5 | Grading & Feedback | 🟡 | §8 | 2026-08-26 | |
 | 6 | Mapping Screen UI (core) | 🔲 | §9 | | |
 | 7 | Error & Empty States | 🔲 | §10 | | |
 | 8 | Bonus / Polish | 🔲 | §12 | | |
@@ -439,31 +439,77 @@ real remaining scope is: actually generating grading data via a real Gemini call
 summary, and Figma-accurate tier→style mapping for Phase 6 to consume.
 
 **Tasks:**
-- [ ] Extend the Phase 4 combined response schema with a `gradings: Grading[]` array (one per
-      matched/answered question) alongside `regions`
-- [ ] Extend `answerMapping.ts`'s prompt so the same call also grades each matched question and
-      writes feedback, instead of a separate third Gemini call (per the existing PRD §13 decision)
-- [ ] Overall summary: extend beyond `summarizeGradings` with an unmatched-region count (from
-      `AnswerRegion[]`, not `Grading[]`) — total awarded / possible / percentage / unanswered
-      count / unmatched count, all in one summary object
-- [ ] Score-pill color-tier → actual Tailwind style mapping (green/amber/red/grey), matching the
-      Figma tokens already logged, consuming Phase 2's `scoreTier()`
+- [x] Extended the Phase 4 combined response schema — `src/lib/schemas/mappingResponse.ts`
+      (`buildMappingResponseSchema(questionIds)`) validates `{ regions, gradings }` together,
+      enforcing exactly one `Grading` per question id passed in (including unanswered ones — no
+      question can be silently missing from the grade book)
+- [x] `answerMapping.ts`'s prompt extended with a STEP 5 grading block (folded into the same
+      call, per the existing PRD §13 decision) — synthesized from 3 real-API-tested candidates
+      (strict rubric / encouraging tone / partial-credit transparency), all of which scored well
+- [x] Combined summary — `src/lib/mapping/mappingSummary.ts` (`buildMappingSummary`,
+      `formatMappingSummary`) merges Phase 2's `summarizeGradings` with an unmatched-region count
+      and a human-readable one-line formatter (e.g. "18/25 (72%) · 2 unanswered · 1 unmatched
+      answer")
+- [x] Score-tier → Tailwind style mapping — `src/lib/mapping/scoreTierStyles.ts`
+      (`getScoreTierClasses`), consuming Phase 2's `scoreTier()`, using the real Figma-derived
+      tokens from `globals.css`
+- [x] Additional infra beyond the original scope: `src/lib/mapping/defaultMarks.ts`
+      (`DEFAULT_MARKS_WHEN_UNSTATED = 2`, `resolveMarksTotal`) formalizing the null-marksTotal
+      fallback as a single source of truth; `src/lib/mapping/feedbackGuardrail.ts`
+      (`isFeedbackReasonable`, `sanitizeFeedback`) as a defensive sanity check against pathological
+      model output
 
-**Tests (Vitest):**
-- [ ] Aggregation function: given a known set of per-question gradings (including some
-      unanswered), totals and counts are computed correctly
-- [ ] Color-tier function: boundary cases (0, partial, full, unanswered) map to the correct tier
+Built via 10 parallel agents (3 real-API grading-prompt experiments + 7 file-level infra tasks) +
+a main-thread integration pass (prompt synthesis into the existing `answerMapping.ts`, route
+wiring, real verification). **Process note — most serious incident yet:** one agent (assigned a
+small, self-contained utility) ran well past normal duration and began rewriting the shared
+`route.ts` integration file itself, leaving it briefly in a non-compiling state before the *user*
+killed it directly. On inspection the file had actually finished correctly (with a complete test
+file) moments after the kill — but this is the third phase in a row with this exact
+run-past-duration-then-overreach pattern. See the dedicated decision-log entry: the actionable
+conclusion is that **proactively killing agents that run past a normal duration is a more
+reliable mitigation than further-worded scope instructions**, which have now failed 3/3 times.
+Worth discussing with the user before Phase 6.
 
-**Manual/real-API verification:**
-- [ ] On the same real answer sheet(s) from Phase 4, sanity-check the AI-assigned marks and
-      feedback text are reasonable (not nonsensical) for a handful of questions
+**Tests (Vitest):** 211 tests project-wide, all passing —
+- [x] `mappingResponse.ts`: valid combined response passes; missing/extra/duplicate `Grading`
+      entries for the question-id set all correctly fail
+- [x] `mappingSummary.ts`: combined aggregation (delegating to `summarizeGradings`) plus
+      unmatched-region count computed correctly; formatter omits zero-count clauses, gets
+      singular/plural right
+- [x] `scoreTierStyles.ts`: all 4 `ScoreTier` values map to non-empty, correct-tier Tailwind
+      classes
+- [x] `defaultMarks.ts`: paper-stated value wins, `null` falls back to the default, `0` is
+      correctly distinguished from `null` (not defaulted)
+- [x] `feedbackGuardrail.ts`: empty/whitespace/too-short/too-long feedback all correctly rejected,
+      boundary length accepted, `sanitizeFeedback` falls back correctly
+- [x] Fixture-based `Grading` parsing: schema validation, correct/partial/unanswered cases present
+      with sensible marks
+- [x] Route test extended: 200 with `regions`+`gradings`+`summary`, 502 when gradings don't cover
+      every question id, retry/malformed/blob-failure paths all still covered
 
-**Definition of Done:** Aggregation/tier unit tests green; spot-checked grading output is
-sensible on real data.
+**Manual/real-API verification:** ✅ **9/9 gradings correct** against the real handwriting-styled
+fixture from Phase 4 (`answer-sheet-basic.pdf`, 9 questions, 2 genuinely unanswered): every
+genuinely-correct answer got full marks, both genuinely-unanswered questions (q2, q5-c) correctly
+got 0 marks and `correctness: "unanswered"`, and every question with no paper-stated marks got a
+sensible non-null, non-zero default (2) rather than an absent or zero total. Feedback text was
+concise, accurate, and appropriately toned in every case.
 
-**Test results log:** _(fill in when run)_
+**Definition of Done:** ✅ met — 211/211 tests green, lint/typecheck clean, real grading output
+verified correct end-to-end on real data, one prompt refinement applied (rounding marks to
+whole/half increments) after real testing surfaced an overly-precise decimal.
 
-**Decisions made this phase:** _(fill in — e.g. default marks-per-question fallback value used)_
+**Test results log:**
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm run test` | Pass (211/211, 40 files) |
+| Real grading verification (`answer-sheet-basic.pdf`, 9 questions) | 9/9 correct |
+
+**Decisions made this phase:** "Grading prompt: folded into the existing answer-mapping prompt as
+a 5th step"; "Process note: a third instance, more severe — a resumed agent broke shared
+integration code" (both in `docs/DECISIONS.md`).
 
 **Review sign-off:** [ ] User approved — date: ____
 
