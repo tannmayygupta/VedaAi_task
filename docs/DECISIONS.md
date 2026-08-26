@@ -555,3 +555,56 @@ more effective than trying to fully scope-lock a directive's wording**, since wo
 now failed to prevent overreach three times in three phases despite escalating explicitness. This
 is worth raising with the user directly as a candidate change to how phases are parallelized
 going forward, rather than continuing to just add stronger prompt wording each time.
+
+## [2026-08-26] Known limitation: only the first uploaded file per slot is sent to Gemini
+**Decision:** `src/app/mapping/page.tsx` passes only `questionPaperUrls[0]` /
+`answerSheetUrls[0]` to the extraction/mapping API calls, even though Phase 1's upload flow
+allows a slot to hold multiple individual image files (one per page) instead of a single
+multi-page PDF. The answer-sheet viewer is likewise capped to that same first URL when multiple
+were uploaded, specifically so the UI never implies pages 2+ were checked when they weren't.
+
+**Why:** A single multi-page PDF per slot is fully supported end-to-end today — Gemini natively
+reads every page of a PDF blob and returns correct per-page `pageIndex` values, as proven
+repeatedly in Phases 3-5's real-API verification. Supporting multiple separate image files as
+one logical multi-page document would require extending both API routes to accept an array of
+blob URLs, fetch and send each as its own part to Gemini, and correlate array-index with
+Gemini's own page numbering — real, non-trivial backend work that Phase 6's actual scope (UI
+assembly, not new pipeline capability) didn't call for.
+
+**Alternatives considered:** Silently only processing the first image with no visual indication
+— rejected as actively misleading (a teacher could believe untouched pages were analyzed and
+came back clean). Blocking multi-image upload entirely at the UI layer — rejected as a Phase 1
+regression; the upload UI already correctly supports it, only the backend doesn't yet.
+
+**Trade-offs / risks:** A teacher who photographs a multi-page answer sheet as separate JPEGs
+(rather than scanning to one PDF) will only get the first page analyzed today, with the
+remaining pages neither shown nor processed. This is an explicit assumption/limitation to state
+in the submission writeup: **recommend uploading a single multi-page PDF for best results.**
+Extending to real multi-image support is a reasonable Phase 8 follow-up if time remains.
+
+## [2026-08-26] Process note: rate-limit-triggered agent confusion during Phase 6's parallel batch
+**What happened:** 8 of 10 Phase 6 agents hit a genuine infrastructure-level rate limit
+("Server is temporarily limiting requests · not your usage limit") almost simultaneously.
+Several of the affected agents' partial outputs showed real confusion under that failure
+condition — at least three explicitly narrated believing THEY were the coordinator and
+attempting to launch the other 9 agents themselves (correctly blocked each time by "forks can't
+spawn forks," and several caught and corrected their own mistake mid-stream: *"I need to stop and
+correct course here... I mistakenly continued acting as if I were still the coordinator."*).
+
+**Action taken:** Did not re-launch into the same rate-limit window. Instead, checked disk state
+directly (`git status`) rather than trusting any status text, found most implementation files had
+actually landed successfully despite the chaos (only test files and two fully-new modules were
+missing), and completed the small remaining gaps directly rather than re-attempting parallel
+dispatch. All final work was independently verified (typecheck, full suite, lint, and a real
+end-to-end browser click-through) before being presented, per the same discipline as the prior
+three incidents.
+
+**Relationship to the prior 3 incidents:** this is a distinct trigger (external rate-limiting
+during initial dispatch, not a stall-then-resume of an already-running agent) but the same
+underlying fragility — a forked agent that inherits the full parent conversation can, under
+stress, lose track of which "role" in that conversation is actually its own. Combined with the
+now-4-for-4 pattern of agents recovering reasonably on their own once self-aware, and disk-state
+verification catching every actual gap regardless of what status text claimed, the practical
+mitigation remains the same as before: **trust disk state and independent verification over any
+agent's self-report, always** — this has now caught real problems 4 times running and cost
+nothing when there was nothing to catch.
