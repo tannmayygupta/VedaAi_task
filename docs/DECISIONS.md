@@ -608,3 +608,105 @@ verification catching every actual gap regardless of what status text claimed, t
 mitigation remains the same as before: **trust disk state and independent verification over any
 agent's self-report, always** — this has now caught real problems 4 times running and cost
 nothing when there was nothing to catch.
+
+## [2026-08-26] Resolved: multi-image answer sheets via client-side PDF merge
+
+**Decision:** When a teacher selects 2+ files for one upload slot, merge them into a single PDF
+client-side (`src/lib/upload/mergeFilesToPdf.ts`, using `pdf-lib`) before uploading, instead of
+uploading each file separately. `src/app/page.tsx`'s `handleStartMapping` now always uploads
+exactly one file per slot, and `src/app/mapping/page.tsx` was simplified to read a single blob
+URL per slot (no more comma-joined arrays or first-URL truncation). This closes the known
+limitation logged 2026-08-26 ("only the first uploaded file per slot is sent to Gemini").
+
+**Why:** Researched both the Gemini API's actual multi-image support and real-world production
+practice before picking an approach. Gemini's `generateContent` does accept multiple images as
+separate parts in one request (official docs: up to 3,600 images/request, 20MB inline-data cap),
+but does not officially guarantee it treats array order as page order — that would be an
+undocumented prompting convention, not a structural guarantee the way PDF page numbers are.
+Meanwhile, real scanning/document-upload products (Adobe Scan, CamScanner, expense/insurance/tax
+uploaders) universally merge multi-photo captures into a single PDF client-side, at
+capture/select time, before anything reaches a backend — never sending a "bag of N images" for
+a vision model to sequence itself. Matching that pattern here reuses the entire already-working,
+already real-API-verified single-PDF pipeline (Gemini page indexing, `resolveAnswerSheetPageSource`,
+per-page bounding boxes) with zero new server-side logic or prompt engineering, versus extending
+every API route to accept `blobUrls: string[]` and building a second, less-certain page-mapping
+path in parallel with the PDF one.
+
+**Alternatives considered:** (a) Extend the API routes to accept an array of blob URLs and send
+each image as its own Gemini part, correlating array index to page index in application code —
+rejected: roughly 2-3x the surface area of the merge approach, and relies on Gemini behavior
+(order-as-page-sequence) that isn't part of its documented contract. (b) Server-side merge (upload
+images individually as today, merge to PDF in an API route before calling Gemini) — rejected in
+favor of client-side merge specifically because it lets the *existing* upload-to-Blob and
+mapping-page code stay single-file-per-slot end to end, touching strictly fewer files.
+
+**Trade-offs / risks:** `pdf-lib` embeds JPEG/PNG natively; WEBP (one of the four accepted upload
+mime types) has no native pdf-lib support, so it's converted to PNG via an in-browser
+`<canvas>` + `createImageBitmap` round-trip first (`convertImageToPngBytes`) — this only runs for
+webp input and was verified via a mocked-canvas unit test (jsdom has no real canvas/image
+decoding) rather than a real-image integration test; if a teacher's browser lacks
+`createImageBitmap`/canvas support (extremely old browsers) the webp path would fail where a
+direct upload wouldn't have. A merged multi-image answer sheet also inherits the pre-existing PDF
+viewer limitation (no per-page visual preview, just an honest "preview isn't available" message)
+— previously, a multi-image upload at least showed a real image preview for its first page; this
+is judged an acceptable trade since the previous behavior was misleadingly partial (extraction
+only ever ran on that first page anyway) and the new behavior is fully correct across every page,
+verified end-to-end against real Gemini output including a case (Q6 split across the page
+boundary, Q7 present only on page 2) that would have failed under the old single-image
+limitation. Verified with `test-fixtures/answer-sheet-multi-image-page{1,2}.jpg` (new fixtures,
+`scripts/fixtures/generate-answer-sheet-multi-image.mjs`) merged and run through the live mapping
+screen against real Gemini output: 14/19 correct, matching the known single-PDF fixture's ground
+truth exactly, including both cross-page cases.
+
+**Note:** Live browser verification of the *actual upload flow* (client to Vercel Blob to
+mapping) was blocked by an unrelated, pre-existing gap: `.env.local`'s `BLOB_READ_WRITE_TOKEN` is
+present but empty in this dev environment (a Phase 9 deployment item, not something this fix
+touches or regresses). Verification instead exercised the merge output directly against the live
+`/mapping` pipeline (bypassing Blob by serving the merged PDF from `public/` and passing its URL
+directly), which is exactly the part of the system this fix changes; the Blob-upload leg of the
+flow is unchanged code (`uploadFileToBlob` is called with a merged `File` exactly as it was
+before with a single selected `File`) and was already verified working in Phase 6.
+
+## [2026-08-26] Agent-orchestration workflow adjustment based on industry-practice research
+
+**Decision:** Going forward, apply these changes to how sub-agents are dispatched for phase work,
+based on researched industry practice (Claude Agent SDK docs, Anthropic's own multi-agent
+engineering writeup, and general multi-agent orchestration literature) rather than continuing to
+just strengthen prompt wording after each incident:
+1. Never resume a stalled/killed agent — relaunch fresh with the same narrow prompt instead of
+   resuming, since resumption-after-a-gap was the proximate trigger in 2 of the 4 incidents so far.
+2. Default to fresh (non-forked, no inherited context) subagents for file-level tasks that don't
+   actually need the parent conversation's history — reserve "fork" (full context inheritance) for
+   tasks that genuinely benefit from it.
+3. Stagger large batch dispatches (e.g., groups of 3-4 with a short gap) rather than firing 10
+   agents at once, to reduce the odds of a simultaneous rate-limit collision like incident #4.
+4. Keep relying on the existing hard tool-level block (forks cannot spawn sub-forks) rather than
+   prompt wording, and keep independent disk-state/test verification as the standing backstop
+   regardless of the above.
+
+**Why:** This is a documented failure class — Anthropic's own multi-agent engineering writeup
+describes subagents drifting when a task's boundaries are underspecified, and separate research
+on context-scoped multi-agent systems documents agents with full/shared context leaking
+out-of-role information and confusing task ownership. The mechanism: a "fork" literally sees the
+same "launch N agents" plan text the coordinator saw, and under a stress event (a timeout, a
+rate-limit retry) the model's continuation prior favors continuing that salient plan over
+recalling which role it was actually assigned — a pattern-completion failure, not a
+comprehension failure, which is why stronger prompt wording (Phases 4-6) reduced severity but
+never fully prevented recurrence (4 incidents across 4 phases). Fresh, context-isolated subagents
+are the default/recommended pattern in the Claude Agent SDK specifically to prevent this; "fork"
+is a deliberate opt-in trade for cost/context-sharing efficiency, and these incidents are exactly
+that trade's known cost.
+
+**Alternatives considered:** Continuing to escalate "SCOPE DISCIPLINE" prompt-preamble wording —
+rejected, since it already failed to prevent recurrence 4/4 times despite increasing explicitness
+each time, and the researched root cause (a continuation/pattern-completion failure under stress,
+not a comprehension gap) suggests prompt wording was never going to be a structural fix. Doing
+nothing / accepting the status quo — rejected because independent verification, while it has
+caught every real problem so far, is a backstop, not a preventive; reducing how often the failure
+occurs is worth the trade even with a reliable backstop in place.
+
+**Trade-offs / risks:** Fresh (non-fork) subagents lose prompt-cache sharing with the parent
+conversation, which costs some efficiency/latency compared to forking. Staggering dispatch adds
+wall-clock time to a batch versus firing all agents simultaneously. Both are judged worthwhile
+given the alternative (a 5th recurrence of the same failure mode). This is a process/workflow
+decision about how future phases get executed, not a change to the shipped application code.

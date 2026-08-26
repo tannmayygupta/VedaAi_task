@@ -71,7 +71,11 @@ Screen"):
 - 10MB max per file (per Figma "Max 10MB" caption) — validate client-side before upload, reject
   with a clear inline error if exceeded.
 - Accept multiple image files for a single slot (e.g., 4 photos of 4 pages) as well as a single
-  multi-page PDF — internally both normalize to an **ordered list of page images**.
+  multi-page PDF — internally both normalize to a **single multi-page PDF**: 2+ selected files
+  are merged client-side into one PDF (`src/lib/upload/mergeFilesToPdf.ts`, via `pdf-lib`) before
+  upload, so exactly one file per slot is ever uploaded or sent to Gemini, regardless of how many
+  files the teacher picked (see `docs/DECISIONS.md` "Resolved: multi-image answer sheets via
+  client-side PDF merge").
 
 **Upload transport (corrected from the original naive design — see `docs/DECISIONS.md`
 "Upload architecture correction"):** files do **not** get posted as `multipart/form-data`

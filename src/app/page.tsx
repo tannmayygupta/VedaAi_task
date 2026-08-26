@@ -8,6 +8,11 @@ import { StartMappingButton } from "@/components/upload/StartMappingButton";
 import { LoadingScreen } from "@/components/upload/LoadingScreen";
 import { useUploadFlow } from "@/lib/upload/useUploadFlow";
 import { uploadFileToBlob } from "@/lib/upload/uploadFileToBlob";
+import { mergeFilesToPdf } from "@/lib/upload/mergeFilesToPdf";
+
+async function prepareSlotFileForUpload(files: File[]): Promise<File> {
+  return files.length > 1 ? mergeFilesToPdf(files) : files[0];
+}
 
 export default function Home() {
   const router = useRouter();
@@ -19,13 +24,17 @@ export default function Home() {
     setUploadError(null);
     setIsUploading(true);
     try {
-      const [questionPaperBlobs, answerSheetBlobs] = await Promise.all([
-        Promise.all(slots.questionPaper.files.map((file) => uploadFileToBlob(file))),
-        Promise.all(slots.answerSheet.files.map((file) => uploadFileToBlob(file))),
+      const [questionPaperFile, answerSheetFile] = await Promise.all([
+        prepareSlotFileForUpload(slots.questionPaper.files),
+        prepareSlotFileForUpload(slots.answerSheet.files),
+      ]);
+      const [questionPaperBlob, answerSheetBlob] = await Promise.all([
+        uploadFileToBlob(questionPaperFile),
+        uploadFileToBlob(answerSheetFile),
       ]);
       const params = new URLSearchParams({
-        questionPaper: questionPaperBlobs.map((b) => b.url).join(","),
-        answerSheet: answerSheetBlobs.map((b) => b.url).join(","),
+        questionPaper: questionPaperBlob.url,
+        answerSheet: answerSheetBlob.url,
       });
       router.push(`/mapping?${params.toString()}`);
     } catch {

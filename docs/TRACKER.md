@@ -578,7 +578,7 @@ mocked) — live real Gemini API calls against the real committed fixtures, serv
       sub-part labeling works through the full real pipeline, not just in unit tests
 
 **Definition of Done:** ✅ met and exceeded — every interaction verified against a real, live
-Gemini response (not mocked data), not just component-level tests; 262/262 tests green,
+Gemini response (not mocked data), not just component-level tests; 267/267 tests green,
 lint/typecheck clean.
 
 **Test results log:**
@@ -586,12 +586,21 @@ lint/typecheck clean.
 |---|---|
 | `npm run typecheck` | Pass |
 | `npm run lint` | Pass (1 real issue found and fixed: `react-hooks/set-state-in-effect` in `useMappingData`) |
-| `npm run test` | Pass (262/262, 51 files) |
+| `npm run test` | Pass (267/267, 52 files) |
 | Live browser click-through vs. real Gemini output | Pass — question highlight, unanswered state, unmatched-answer highlight, sub-part highlight all correct |
+| Multi-image → merged-PDF fix, live browser vs. real Gemini output | Pass — Q6 (split across the page boundary) and Q7 (page-2 only) both extracted/graded correctly (14/19, matching the single-PDF fixture's known ground truth exactly); regression check on the original single-PDF path (simplified query-param code) also passed unchanged |
 
 **Decisions made this phase:** "Known limitation: only the first uploaded file per slot is sent
-to Gemini"; "Process note: rate-limit-triggered agent confusion during Phase 6's parallel batch"
-(both in `docs/DECISIONS.md`).
+to Gemini" (since resolved — see below); "Process note: rate-limit-triggered agent confusion
+during Phase 6's parallel batch"; "Resolved: multi-image answer sheets via client-side PDF merge";
+"Agent-orchestration workflow adjustment based on industry-practice research" (all in
+`docs/DECISIONS.md`).
+
+**Post-sign-off follow-up (2026-08-26):** the multi-image limitation flagged above was resolved
+before sign-off, not deferred — teacher-selected multi-image answer sheets are now merged into a
+single PDF client-side (`src/lib/upload/mergeFilesToPdf.ts`) and go through the same proven
+single-PDF pipeline. See the corresponding `docs/DECISIONS.md` entry for the research and
+verification behind this.
 
 **Review sign-off:** [ ] User approved — date: ____
 

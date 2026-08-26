@@ -11,10 +11,6 @@ import { NoAnswerFoundState } from "@/components/mapping/NoAnswerFoundState";
 import { useMappingData, type MappingData } from "@/lib/mapping/useMappingData";
 import { useMappingSelection } from "@/lib/mapping/useMappingSelection";
 
-function parseBlobUrls(param: string | null): string[] {
-  return (param ?? "").split(",").filter(Boolean);
-}
-
 function ErrorState({ title, message, router }: { title: string; message: string; router: ReturnType<typeof useRouter> }) {
   return (
     <AppShell>
@@ -88,22 +84,15 @@ function MappingPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const questionPaperUrls = useMemo(
-    () => parseBlobUrls(searchParams.get("questionPaper")),
-    [searchParams],
+  const questionPaperUrl = searchParams.get("questionPaper") ?? "";
+  const answerSheetUrl = searchParams.get("answerSheet") ?? "";
+  // Multi-image answer sheets are merged into a single PDF client-side before
+  // upload (see src/lib/upload/mergeFilesToPdf.ts and docs/DECISIONS.md), so
+  // every slot is always exactly one blob URL by the time it reaches this page.
+  const viewerBlobUrls = useMemo(
+    () => (answerSheetUrl ? [answerSheetUrl] : []),
+    [answerSheetUrl],
   );
-  const answerSheetUrls = useMemo(
-    () => parseBlobUrls(searchParams.get("answerSheet")),
-    [searchParams],
-  );
-
-  const questionPaperUrl = questionPaperUrls[0] ?? "";
-  const answerSheetUrl = answerSheetUrls[0] ?? "";
-  // Known limitation (see docs/DECISIONS.md): only the first file per slot is sent to
-  // Gemini today. A single multi-page PDF is fully supported end-to-end; multiple
-  // separate images beyond the first aren't analyzed yet, so the viewer only shows
-  // that first one too, to avoid implying pages were checked when they weren't.
-  const viewerBlobUrls = answerSheetUrls.length > 1 ? [answerSheetUrls[0]] : answerSheetUrls;
 
   const dataState = useMappingData(questionPaperUrl, answerSheetUrl);
 
