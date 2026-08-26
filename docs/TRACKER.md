@@ -16,7 +16,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 1 | Upload + Loading UI | 🟢 | §4, §5 | 2026-08-26 | 2026-08-26 |
 | 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
 | 3 | Question Extraction | 🟢 | §6 | 2026-08-26 | 2026-08-26 |
-| 4 | Answer Extraction + Mapping | 🟡 | §7 | 2026-08-26 | |
+| 4 | Answer Extraction + Mapping | 🟢 | §7 | 2026-08-26 | 2026-08-26 |
 | 5 | Grading & Feedback | 🔲 | §8 | | |
 | 6 | Mapping Screen UI (core) | 🔲 | §9 | | |
 | 7 | Error & Empty States | 🔲 | §10 | | |
@@ -422,7 +422,7 @@ candidates, all scored perfect"; "Known limitation: match confidence values aren
 calibrated by the model"; "Process note: a second instance of a resumed sub-agent exceeding its
 scope" (all in `docs/DECISIONS.md`).
 
-**Review sign-off:** [ ] User approved — date: ____
+**Review sign-off:** [x] User approved — date: 2026-08-26
 
 ---
 
@@ -432,11 +432,22 @@ scope" (all in `docs/DECISIONS.md`).
 **Goal:** Per-question marks/correctness/feedback (folded into the Phase 4 call per the logged
 decision) plus overall summary aggregation, per PRD §8.
 
+**Note:** `src/lib/schemas/grading.ts` (Zod schema, `summarizeGradings`, `scoreTier`) was already
+built in Phase 2 (one of that phase's 10 parallel agents got ahead of schedule) — this phase's
+real remaining scope is: actually generating grading data via a real Gemini call, extending the
+`extract-and-map-answers` response to include it, an unmatched-region count to round out the
+summary, and Figma-accurate tier→style mapping for Phase 6 to consume.
+
 **Tasks:**
-- [ ] Extend the Phase 4 response schema with `Grading` fields per matched region
-- [ ] Overall summary aggregation function (total awarded / total possible, unanswered count,
-      unmatched count) — pure function
-- [ ] Score-pill color-tier logic (green/amber/red/grey-unanswered) — pure function
+- [ ] Extend the Phase 4 combined response schema with a `gradings: Grading[]` array (one per
+      matched/answered question) alongside `regions`
+- [ ] Extend `answerMapping.ts`'s prompt so the same call also grades each matched question and
+      writes feedback, instead of a separate third Gemini call (per the existing PRD §13 decision)
+- [ ] Overall summary: extend beyond `summarizeGradings` with an unmatched-region count (from
+      `AnswerRegion[]`, not `Grading[]`) — total awarded / possible / percentage / unanswered
+      count / unmatched count, all in one summary object
+- [ ] Score-pill color-tier → actual Tailwind style mapping (green/amber/red/grey), matching the
+      Figma tokens already logged, consuming Phase 2's `scoreTier()`
 
 **Tests (Vitest):**
 - [ ] Aggregation function: given a known set of per-question gradings (including some
