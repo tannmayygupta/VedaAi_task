@@ -5,6 +5,7 @@ import type { Question } from "@/lib/schemas/question";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
 import type { Grading } from "@/lib/schemas/grading";
 import type { MappingSummary } from "@/lib/mapping/mappingSummary";
+import { readMappingCache, writeMappingCache } from "@/lib/mapping/mappingResultCache";
 
 export type MappingData = {
   questions: Question[];
@@ -33,6 +34,12 @@ export type UseMappingDataResult = MappingDataState & { retry: () => void };
  * fails, the whole result settles to `{status: "error"}` — the successfully
  * fetched questions are discarded rather than shown as a half-populated
  * mapping screen (PRD §10: partial extraction = full failure).
+ *
+ * A successful result is cached in sessionStorage per (questionPaperUrl,
+ * answerSheetUrl) pair, so refreshing the mapping screen doesn't lose it and
+ * re-run the whole AI pipeline. `retry()` always bypasses the cache — a
+ * retry means the previous attempt was bad, so it should never just
+ * re-serve a stale cached result.
  */
 export function useMappingData(
   questionPaperUrl: string,
@@ -45,6 +52,15 @@ export function useMappingData(
     let cancelled = false;
 
     async function run() {
+      if (retryCount === 0) {
+        const cached = readMappingCache(questionPaperUrl, answerSheetUrl);
+        if (cached) {
+          if (!cancelled) {
+            setState({ status: "ready", data: cached });
+          }
+          return;
+        }
+      }
       if (!cancelled) {
         setState({ status: "loading" });
       }
@@ -70,16 +86,15 @@ export function useMappingData(
           throw new Error(aJson.error ?? "Failed to extract and map answers");
         }
 
+        const data: MappingData = {
+          questions,
+          regions: aJson.regions,
+          gradings: aJson.gradings,
+          summary: aJson.summary,
+        };
+        writeMappingCache(questionPaperUrl, answerSheetUrl, data);
         if (!cancelled) {
-          setState({
-            status: "ready",
-            data: {
-              questions,
-              regions: aJson.regions,
-              gradings: aJson.gradings,
-              summary: aJson.summary,
-            },
-          });
+          setState({ status: "ready", data });
         }
       } catch (error) {
         if (!cancelled) {

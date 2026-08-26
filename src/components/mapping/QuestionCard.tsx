@@ -1,8 +1,12 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, TriangleAlert } from "lucide-react";
 import type { ScoreTier } from "@/lib/schemas/grading";
 import { getScoreTierClasses } from "@/lib/mapping/scoreTierStyles";
+import { Tooltip } from "./Tooltip";
+
+export const LOW_CONFIDENCE_TOOLTIP =
+  "Helps the teacher know where to double-check the AI's work instead of blindly trusting it.";
 
 export type QuestionCardProps = {
   displayLabel: string;
@@ -13,6 +17,7 @@ export type QuestionCardProps = {
   feedback: string | null;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  needsReview?: boolean;
 };
 
 function badgeContent(displayLabel: string, subpartLetter?: string): string {
@@ -32,6 +37,7 @@ export function QuestionCard({
   feedback,
   isExpanded,
   onToggleExpand,
+  needsReview = false,
 }: QuestionCardProps) {
   const { background, text } = getScoreTierClasses(scoreTier);
 
@@ -61,6 +67,15 @@ export function QuestionCard({
         <div className={`rounded-full px-3 py-1 text-base font-bold ${background} ${text}`}>
           {scoreLabel}
         </div>
+
+        {needsReview && (
+          <Tooltip label={LOW_CONFIDENCE_TOOLTIP}>
+            <span className="flex items-center gap-1 rounded-full bg-warning-tint px-2 py-1 text-xs font-bold text-warning">
+              <TriangleAlert className="size-3.5" aria-hidden="true" />
+              Verify
+            </span>
+          </Tooltip>
+        )}
 
         <button
           type="button"

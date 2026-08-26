@@ -1,6 +1,10 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useMappingData } from "./useMappingData";
+
+beforeEach(() => {
+  sessionStorage.clear();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -113,5 +117,56 @@ describe("useMappingData", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body);
     expect(secondCallBody.questions).toEqual([{ id: "q1", text: "Sample" }]);
+  });
+
+  it("serves a cached result instantly (no fetch) on a fresh mount for the same URL pair", async () => {
+    const fetchMock = vi.fn();
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ questions: [{ id: "q1" }] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ regions: [], gradings: [], summary: { totalAwarded: 1 } }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = renderHook(() => useMappingData("qp.pdf", "as.pdf"));
+    await waitFor(() => expect(first.result.current.status).toBe("ready"));
+    first.unmount();
+
+    fetchMock.mockClear();
+    const second = renderHook(() => useMappingData("qp.pdf", "as.pdf"));
+
+    await waitFor(() => expect(second.result.current.status).toBe("ready"));
+    if (second.result.current.status !== "ready") throw new Error("expected ready");
+    expect(second.result.current.data.questions).toEqual([{ id: "q1" }]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("retry() bypasses the cache and re-fetches for real", async () => {
+    const fetchMock = vi.fn();
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ questions: [{ id: "q1" }] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ regions: [], gradings: [], summary: { totalAwarded: 1 } }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ questions: [{ id: "q2" }] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ regions: [], gradings: [], summary: { totalAwarded: 2 } }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useMappingData("qp.pdf", "as.pdf"));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    result.current.retry();
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => {
+      if (result.current.status !== "ready") throw new Error("expected ready");
+      expect(result.current.data.questions).toEqual([{ id: "q2" }]);
+    });
   });
 });

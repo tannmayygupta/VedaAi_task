@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QuestionCard } from "./QuestionCard";
+import { QuestionCard, LOW_CONFIDENCE_TOOLTIP } from "./QuestionCard";
 
 function renderCard(overrides: Partial<Parameters<typeof QuestionCard>[0]> = {}) {
   const onToggleExpand = vi.fn();
@@ -77,5 +77,16 @@ describe("QuestionCard", () => {
   it("renders no feedback panel when expanded but feedback is null", () => {
     renderCard({ isExpanded: true, feedback: null });
     expect(screen.queryByText("AI Feedback")).not.toBeInTheDocument();
+  });
+
+  it("does not render a 'Verify' badge by default", () => {
+    renderCard();
+    expect(screen.queryByText("Verify")).not.toBeInTheDocument();
+  });
+
+  it("renders a 'Verify' badge with a tooltip explaining why, when needsReview is true", () => {
+    renderCard({ needsReview: true });
+    expect(screen.getByText("Verify")).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveTextContent(LOW_CONFIDENCE_TOOLTIP);
   });
 });

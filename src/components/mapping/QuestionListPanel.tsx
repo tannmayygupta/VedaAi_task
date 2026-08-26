@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { QuestionCard } from "./QuestionCard";
 import { SummaryBanner } from "./SummaryBanner";
 import { scoreTier, type Grading } from "@/lib/schemas/grading";
 import { buildMappingSummary } from "@/lib/mapping/mappingSummary";
+import { getRegionsNeedingReview } from "@/lib/mapping/reviewFlag";
+import { exportMappingDataAsJson } from "@/lib/mapping/exportMappingData";
 import type { Question } from "@/lib/schemas/question";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
 
@@ -45,12 +47,22 @@ export function QuestionListPanel({
 
   const summary = buildMappingSummary(gradings, regions);
 
+  const questionIdsNeedingReview = useMemo(
+    () => new Set(getRegionsNeedingReview(regions).map((r) => r.matchedQuestionId)),
+    [regions],
+  );
+
+  function handleExportJson() {
+    exportMappingDataAsJson({ questions, regions, gradings, summary });
+  }
+
   return (
     <div className="flex h-full flex-col gap-4">
       <SummaryBanner
         summary={summary}
         allExpanded={allExpanded}
         onToggleExpandAll={handleToggleExpandAll}
+        onExportJson={handleExportJson}
       />
       <div className="flex flex-col gap-3 overflow-y-auto">
         {questions.map((question) => {
@@ -72,6 +84,7 @@ export function QuestionListPanel({
               feedback={grading?.feedback ?? null}
               isExpanded={expandedIds.has(question.id)}
               onToggleExpand={() => handleToggleExpand(question.id)}
+              needsReview={questionIdsNeedingReview.has(question.id)}
             />
           );
         })}

@@ -20,7 +20,7 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 5 | Grading & Feedback | 🟢 | §8 | 2026-08-26 | 2026-08-26 |
 | 6 | Mapping Screen UI (core) | 🟢 | §9 | 2026-08-26 | 2026-08-26 |
 | 7 | Error & Empty States | 🟢 | §10 | 2026-08-26 | 2026-08-26 |
-| 8 | Bonus / Polish | 🔲 | §12 | | |
+| 8 | Bonus / Polish | 🟡 | §12 | 2026-08-26 | |
 | 9 | Deployment & Submission | 🔲 | §11 | | |
 
 **Open blockers:**
@@ -694,28 +694,48 @@ deferred to Phase 8 as logged limitations).
 
 ## Phase 8 — Bonus / Polish
 
-**Status:** 🔲 Not Started
+**Status:** 🟡 Testing/Review
 **Goal:** Implement the highest-value, lowest-effort items from PRD §12, time permitting, in
 priority order. **Do not start this phase before Phase 0–7 are all Done.**
 
-**Candidate order (re-confirm with user before starting each):**
-- [ ] #2 Confidence flag on low-confidence matches
-- [ ] #3 sessionStorage persistence of results
-- [ ] #5 Keyboard navigation
-- [ ] #6 Export raw extraction as JSON
-- [ ] #4 Export graded report (PDF/print view)
-- [ ] #7 Manual re-link of mis-mapped answer (only if ample time remains)
-- [ ] #8 Mobile-responsive layout (only if ample time remains)
+**Candidate order (re-confirm with user before starting each) — user picked #2, #3, #6:**
+- [x] #2 Confidence flag on low-confidence matches — `reviewFlag.ts`'s existing (previously
+      unwired) logic, surfaced as a "Verify" badge + tooltip on `QuestionCard`
+- [x] #3 sessionStorage persistence of results — `mappingResultCache.ts`, wired into
+      `useMappingData`
+- [ ] #5 Keyboard navigation — skipped, not requested
+- [x] #6 Export raw extraction as JSON — `exportMappingData.ts`, button in `SummaryBanner`
+- [ ] #4 Export graded report (PDF/print view) — skipped, not requested
+- [ ] #7 Manual re-link of mis-mapped answer (only if ample time remains) — skipped, not requested
+- [ ] #8 Mobile-responsive layout (only if ample time remains) — skipped, not requested
 
-**Tests:** per-feature, defined when each is started (same Vitest/RTL + claude-in-chrome pattern
-as prior phases).
+**Tests:** per-feature Vitest + RTL (`Tooltip.test.tsx`, `mappingResultCache.test.ts`,
+`exportMappingData.test.ts`, plus updated tests in `QuestionCard`/`QuestionListPanel`/
+`SummaryBanner`/`useMappingData`); live browser verification via claude-in-chrome.
 
-**Definition of Done:** Each attempted bonus item individually tested and visually verified
-before being marked done; nothing half-implemented is left in the build.
+**Manual verification (claude-in-chrome):** Real Gemini quota was exhausted again (same daily
+wall as Phase 7). Verified live a different way: injected a realistic fake result directly into
+`sessionStorage` under the app's real cache key, loaded `/mapping` with matching URL params, and
+confirmed zero network requests fired, the screen rendered correctly from cache (including the
+answer-sheet highlight), the "Verify" badge appeared only on the deliberately low-confidence
+question, hovering it showed the exact requested tooltip text, and Export JSON ran with no
+console errors.
 
-**Test results log:** _(fill in per item attempted)_
+**Definition of Done:** ✅ met for the 3 items attempted — each individually tested and visually
+verified; the 4 skipped items are left untouched, not half-implemented.
 
-**Decisions made this phase:** _(fill in)_
+**Test results log:**
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm run test` | Pass (305/305, 61 files) |
+| Live browser: cache hit (zero network calls), confidence badge + tooltip, Export JSON click | Pass |
+
+**Decisions made this phase:** "Phase 8 scope: 3 bonus items picked, user-confirmed before
+implementation" (see `docs/DECISIONS.md`).
+
+**Review sign-off:** [ ] User approved — date: ____
 
 **Review sign-off:** [ ] User approved — date: ____
 

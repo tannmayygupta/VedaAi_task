@@ -6,6 +6,13 @@ import type { Question } from "@/lib/schemas/question";
 import type { Grading } from "@/lib/schemas/grading";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
 
+const { exportMappingDataAsJsonMock } = vi.hoisted(() => ({
+  exportMappingDataAsJsonMock: vi.fn(),
+}));
+vi.mock("@/lib/mapping/exportMappingData", () => ({
+  exportMappingDataAsJson: exportMappingDataAsJsonMock,
+}));
+
 const questions: Question[] = [
   {
     id: "q1",
@@ -99,5 +106,62 @@ describe("QuestionListPanel", () => {
 
     await userEvent.click(screen.getByText("Collapse All"));
     expect(screen.queryByText("Correct!")).not.toBeInTheDocument();
+  });
+
+  it("flags a question with a low-confidence matched region, but not one with a confident match", () => {
+    const regionsWithConfidence: AnswerRegion[] = [
+      {
+        id: "r1",
+        pageIndex: 0,
+        boundingBox: { yMin: 0, xMin: 0, yMax: 100, xMax: 100 },
+        transcribedText: "Paris",
+        detectedLabel: "1",
+        matchedQuestionId: "q1",
+        matchConfidence: 0.3,
+        continuesFromRegionId: null,
+      },
+      {
+        id: "r2",
+        pageIndex: 0,
+        boundingBox: { yMin: 100, xMin: 0, yMax: 200, xMax: 100 },
+        transcribedText: "Nile",
+        detectedLabel: "2",
+        matchedQuestionId: "q2",
+        matchConfidence: 0.95,
+        continuesFromRegionId: null,
+      },
+    ];
+
+    render(
+      <QuestionListPanel
+        questions={questions}
+        gradings={gradings}
+        regions={regionsWithConfidence}
+        selectedQuestionId={null}
+        onSelectQuestion={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("Verify")).toHaveLength(1);
+  });
+
+  it("exports the current questions, regions, and gradings as JSON when Export JSON is clicked", async () => {
+    render(
+      <QuestionListPanel
+        questions={questions}
+        gradings={gradings}
+        regions={regions}
+        selectedQuestionId={null}
+        onSelectQuestion={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export as json/i }));
+
+    expect(exportMappingDataAsJsonMock).toHaveBeenCalledTimes(1);
+    const exported = exportMappingDataAsJsonMock.mock.calls[0][0];
+    expect(exported.questions).toEqual(questions);
+    expect(exported.gradings).toEqual(gradings);
+    expect(exported.regions).toEqual(regions);
   });
 });

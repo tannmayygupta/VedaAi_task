@@ -907,3 +907,57 @@ have missed (the `UploadSlotCard` unhandled rejection and the `scoreTier` zero-m
 required tracing async control flow and a narrow numeric edge case, respectively) — this validates
 running a broad audit before writing fixes as the default approach for future "harden this area"
 phases, not just this one.
+
+## [2026-08-26] Phase 8 scope: 3 bonus items picked, user-confirmed before implementation
+
+**Decision:** Of PRD §12's 7 optional bonus items, implemented exactly three, chosen by the user
+after a plain-language rundown of what each one does: (1) confidence flag on low-confidence
+matches, (2) sessionStorage persistence of a completed result, (3) export raw extraction as JSON.
+Explicitly skipped for now: keyboard navigation, export graded report, manual re-link of a
+mis-mapped answer, mobile-responsive layout.
+
+**Why:** `docs/TRACKER.md`'s own Phase 8 section says "re-confirm with user before starting each"
+bonus item — these are optional/time-permitting per PRD §12, not required scope, so implementing
+without asking would be scope creep even though the code itself is small. Presenting a plain
+"what does this actually do" explanation (not just the PRD's own effort/value framing) surfaced
+that the user wanted a very specific interaction detail for the confidence flag: hovering the
+"Verify" badge must show the exact explanatory sentence, not just a generic tooltip — implemented
+literally as `LOW_CONFIDENCE_TOOLTIP` in `QuestionCard.tsx`, verified live in the browser via
+hover.
+
+**Implementation notes:**
+- Confidence flag reused existing, already-built-but-unwired logic
+  (`src/lib/mapping/reviewFlag.ts`'s `shouldFlagForReview`/`getRegionsNeedingReview`, with its own
+  `LOW_CONFIDENCE_THRESHOLD = 0.6`, built in an earlier phase but never actually connected to the
+  UI) — genuinely the "trivial" effort PRD §12 promised. Added a small reusable `Tooltip.tsx`
+  (CSS-only hover, no positioning library) since none existed yet.
+- sessionStorage caching lives in `src/lib/mapping/mappingResultCache.ts`, keyed by
+  `(questionPaperUrl, answerSheetUrl)`, read on first mount only (`retryCount === 0` — see the
+  Phase 7 retry mechanism this builds on) and always bypassed on an explicit `retry()`, since a
+  retry means the previous attempt was bad and must never just re-serve a stale cached result.
+  Degrades silently (try/catch around all storage calls) for private-browsing/quota-exceeded
+  cases, per PRD §12's own framing ("fits the in-memory only constraint").
+- Export JSON assembles the exact `MappingData` shape already used everywhere else in the app
+  (`src/lib/mapping/exportMappingData.ts`) and triggers a standard Blob-URL-plus-anchor-click
+  browser download — no new dependency needed.
+
+**Verification:** Real Gemini quota was exhausted again (same daily 20/day free-tier wall as
+Phase 7's verification — see that entry) before this could be checked against a fresh real
+extraction. Rather than requesting yet another replacement key, verified live in the browser a
+different way: injected a realistic fake `MappingData` result (including one deliberately
+low-confidence region) directly into `sessionStorage` under the exact key format the app computes,
+then loaded `/mapping` with matching URL params. This exercised the real code path end-to-end —
+confirmed zero network requests fired (genuine cache hit), the mapping screen rendered correctly
+from cached data (including the answer-sheet highlight for the flagged question), the "Verify"
+badge appeared only on the low-confidence question, and hovering it showed the exact requested
+tooltip text. Export JSON was clicked live with no console errors; the underlying Blob/anchor-click
+mechanics are additionally covered directly by unit tests using real jsdom DOM APIs (only
+`URL.createObjectURL`/`revokeObjectURL` are stubbed, since jsdom doesn't implement them).
+
+**Trade-offs / risks:** The sessionStorage cache has no TTL or invalidation beyond "cleared when
+the tab closes" — acceptable since results aren't expected to become stale within one working
+session, and there is no server-side state to drift out of sync with (no auth, no DB). If Gemini's
+schemas for `Question`/`AnswerRegion`/`Grading` ever change shape, an old cached entry from a prior
+version of the app could in principle fail to match the current types on read — low risk given
+this is a single-session, no-persistence-across-deploys app, and `JSON.parse` failures are already
+caught and degrade to "cache miss," not a crash.
