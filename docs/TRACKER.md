@@ -12,14 +12,14 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 
 | # | Phase | Status | PRD ref | Started | Done |
 |---|---|---|---|---|---|
-| 0 | Foundations & Tooling | 🟡 | — | 2026-08-26 | |
+| 0 | Foundations & Tooling | 🟢 | — | 2026-08-26 | 2026-08-26 |
 | 1 | Upload + Loading UI | 🟢 | §4, §5 | 2026-08-26 | 2026-08-26 |
 | 2 | Data Models & Gemini Client | 🟢 | §13 | 2026-08-26 | 2026-08-26 |
 | 3 | Question Extraction | 🟢 | §6 | 2026-08-26 | 2026-08-26 |
 | 4 | Answer Extraction + Mapping | 🟢 | §7 | 2026-08-26 | 2026-08-26 |
 | 5 | Grading & Feedback | 🟢 | §8 | 2026-08-26 | 2026-08-26 |
 | 6 | Mapping Screen UI (core) | 🟢 | §9 | 2026-08-26 | 2026-08-26 |
-| 7 | Error & Empty States | 🟡 | §10 | 2026-08-26 | |
+| 7 | Error & Empty States | 🟢 | §10 | 2026-08-26 | 2026-08-26 |
 | 8 | Bonus / Polish | 🔲 | §12 | | |
 | 9 | Deployment & Submission | 🔲 | §11 | | |
 
@@ -104,7 +104,9 @@ reasoning and verification. Test results:
 | `npm run test` | Pass (278/278, 56 files) |
 | Visual check vs Figma `1:8773`/`1:8826` (Upload Screen, both states) | Pass — profile/school icons, sidebar toggle icon, notification dot, and center hero illustration all now present and closely matching layout/spacing |
 
-**Review sign-off:** [ ] User approved — date: ____
+**Review sign-off:** [x] User approved — date: 2026-08-26 (status/sign-off bookkeeping caught up
+retroactively — the phase's actual work, including the later UI-fidelity follow-up, was already
+complete and tested; this just corrects a stale checkbox that was never checked at the time)
 
 ---
 
@@ -641,7 +643,7 @@ change) — full detail and the Turbopack-worker workaround in `docs/DECISIONS.m
 
 ## Phase 7 — Error & Empty States
 
-**Status:** 🟡 Testing/Review
+**Status:** 🟢 Done
 **Goal:** Every failure mode identified in PRD §10 has a real, non-silent UI state.
 
 **Tasks:**
@@ -686,7 +688,7 @@ spinners, no blank screens, no unhandled crashes.
 (see `docs/DECISIONS.md` for the full findings list, what was fixed, and what was deliberately
 deferred to Phase 8 as logged limitations).
 
-**Review sign-off:** [ ] User approved — date: ____
+**Review sign-off:** [x] User approved — date: 2026-08-26
 
 ---
 
