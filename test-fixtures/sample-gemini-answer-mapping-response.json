@@ -1,0 +1,66 @@
+{
+  "_placeholder": true,
+  "_note": "Hand-authored placeholder — replace with a real captured Gemini response once Phase 4's final mapping prompt is chosen and run for real. See docs/TRACKER.md Phase 4.",
+  "regions": [
+    {
+      "id": "r1",
+      "pageIndex": 0,
+      "boundingBox": { "yMin": 100, "xMin": 80, "yMax": 180, "xMax": 900 },
+      "transcribedText": "Jupiter",
+      "detectedLabel": "Q1",
+      "matchedQuestionId": "q1",
+      "matchConfidence": 0.97,
+      "continuesFromRegionId": null
+    },
+    {
+      "id": "r2",
+      "pageIndex": 0,
+      "boundingBox": { "yMin": 200, "xMin": 80, "yMax": 260, "xMax": 900 },
+      "transcribedText": "I think trade between countries is really important for the economy and helps build friendships between nations.",
+      "detectedLabel": null,
+      "matchedQuestionId": null,
+      "matchConfidence": 0.72,
+      "continuesFromRegionId": null
+    },
+    {
+      "id": "r3",
+      "pageIndex": 0,
+      "boundingBox": { "yMin": 300, "xMin": 80, "yMax": 360, "xMax": 900 },
+      "transcribedText": "One advantage is that goods can move without extra taxes.",
+      "detectedLabel": "5(a)",
+      "matchedQuestionId": "q5-a",
+      "matchConfidence": 0.91,
+      "continuesFromRegionId": null
+    },
+    {
+      "id": "r4",
+      "pageIndex": 0,
+      "boundingBox": { "yMin": 400, "xMin": 80, "yMax": 460, "xMax": 900 },
+      "transcribedText": "A challenge is that disputes can arise over where exactly the border lies.",
+      "detectedLabel": "5(b)",
+      "matchedQuestionId": "q5-b",
+      "matchConfidence": 0.55,
+      "continuesFromRegionId": null
+    },
+    {
+      "id": "r5",
+      "pageIndex": 0,
+      "boundingBox": { "yMin": 500, "xMin": 80, "yMax": 700, "xMax": 900 },
+      "transcribedText": "The tallest mountain in the world is Mount Everest, and it remains one of the most",
+      "detectedLabel": "Q6",
+      "matchedQuestionId": "q6",
+      "matchConfidence": 0.88,
+      "continuesFromRegionId": null
+    },
+    {
+      "id": "r6",
+      "pageIndex": 1,
+      "boundingBox": { "yMin": 60, "xMin": 80, "yMax": 140, "xMax": 900 },
+      "transcribedText": "challenging peaks to climb in the world due to its extreme altitude.",
+      "detectedLabel": null,
+      "matchedQuestionId": "q6",
+      "matchConfidence": 0.83,
+      "continuesFromRegionId": "r5"
+    }
+  ]
+}

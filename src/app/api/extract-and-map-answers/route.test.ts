@@ -1,9 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const fetchBlobFileMock = vi.fn();
+const callGeminiJsonMock = vi.fn();
 
 vi.mock("@/lib/gemini/fetchBlobFile", () => ({
   fetchBlobFile: (...args: unknown[]) => fetchBlobFileMock(...args),
+}));
+
+vi.mock("@/lib/gemini/client", () => ({
+  callGeminiJson: (...args: unknown[]) => callGeminiJsonMock(...args),
 }));
 
 vi.mock("@/lib/errors", () => {
@@ -37,9 +42,37 @@ function makeRequest(body: unknown) {
   });
 }
 
+const sampleQuestions = [
+  {
+    id: "q1",
+    number: "1",
+    subpart: null,
+    displayLabel: "1",
+    text: "Sample question",
+    marksTotal: 2,
+    pageIndex: 0,
+    order: 0,
+  },
+];
+
+function sampleRegion(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "r1",
+    pageIndex: 0,
+    boundingBox: { yMin: 100, xMin: 100, yMax: 300, xMax: 800 },
+    transcribedText: "Sample answer",
+    detectedLabel: "Q1",
+    matchedQuestionId: "q1",
+    matchConfidence: 0.9,
+    continuesFromRegionId: null,
+    ...overrides,
+  };
+}
+
 describe("POST /api/extract-and-map-answers", () => {
   beforeEach(() => {
     fetchBlobFileMock.mockReset();
+    callGeminiJsonMock.mockReset();
   });
 
   it("returns 400 when blobUrl is missing", async () => {
@@ -57,41 +90,90 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(response2.status).toBe(400);
   });
 
-  it("returns 200 with mapped regions for a valid request with questions", async () => {
+  it("returns 400 when questions don't match the Question schema", async () => {
+    const response = await POST(
+      makeRequest({
+        blobUrl: "https://blob.example/file.pdf",
+        questions: [{ id: "q1" }],
+      }),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 200 with mapped regions for a well-formed model response", async () => {
     fetchBlobFileMock.mockResolvedValueOnce({
       bytes: new ArrayBuffer(8),
       mimeType: "application/pdf",
       sizeBytes: 8,
     });
-
-    const questions = [
-      {
-        id: "q1",
-        number: "1",
-        subpart: null,
-        displayLabel: "1",
-        text: "Sample question",
-        marksTotal: 2,
-        pageIndex: 0,
-        order: 0,
-      },
-    ];
+    callGeminiJsonMock.mockResolvedValueOnce({ regions: [sampleRegion()] });
 
     const response = await POST(
-      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions }),
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
     );
     expect(response.status).toBe(200);
     const json = await response.json();
-    expect(Array.isArray(json.regions)).toBe(true);
+    expect(json.regions).toHaveLength(1);
     expect(json.regions[0].matchedQuestionId).toBe("q1");
   });
 
-  it("returns 200 with an empty regions array when questions is empty", async () => {
+  it("nulls out matchedQuestionId if the model references a question id that wasn't provided", async () => {
     fetchBlobFileMock.mockResolvedValueOnce({
       bytes: new ArrayBuffer(8),
       mimeType: "application/pdf",
       sizeBytes: 8,
     });
+    callGeminiJsonMock.mockResolvedValueOnce({
+      regions: [sampleRegion({ matchedQuestionId: "does-not-exist", matchConfidence: 0.9 })],
+    });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.regions[0].matchedQuestionId).toBeNull();
+    expect(json.regions[0].matchConfidence).toBe(0);
+  });
+
+  it("retries once on a malformed response and succeeds on the second attempt", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: new ArrayBuffer(8),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock
+      .mockResolvedValueOnce({ regions: [{ id: "r1" }] }) // malformed
+      .mockResolvedValueOnce({ regions: [sampleRegion()] }); // valid retry
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns 502 when the model response is malformed on both attempts", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: new ArrayBuffer(8),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValue({ regions: [{ id: "r1" }] });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(502);
+  });
+
+  it("returns 200 with an empty regions array when the model returns none", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: new ArrayBuffer(8),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValueOnce({ regions: [] });
 
     const response = await POST(
       makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: [] }),
@@ -104,21 +186,8 @@ describe("POST /api/extract-and-map-answers", () => {
   it("returns 500 when fetchBlobFile rejects", async () => {
     fetchBlobFileMock.mockRejectedValueOnce(new Error("blob fetch failed"));
 
-    const questions = [
-      {
-        id: "q1",
-        number: "1",
-        subpart: null,
-        displayLabel: "1",
-        text: "Sample question",
-        marksTotal: null,
-        pageIndex: 0,
-        order: 0,
-      },
-    ];
-
     const response = await POST(
-      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions }),
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
     );
     expect(response.status).toBe(500);
   });
