@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { QuestionCard } from "./QuestionCard";
+import { QuestionCard, LOW_CONFIDENCE_TOOLTIP, HANDWRITING_MISMATCH_TOOLTIP } from "./QuestionCard";
 import { SummaryBanner } from "./SummaryBanner";
 import { scoreTier, type Grading } from "@/lib/schemas/grading";
 import { buildMappingSummary } from "@/lib/mapping/mappingSummary";
-import { getRegionsNeedingReview } from "@/lib/mapping/reviewFlag";
+import { getReviewReason } from "@/lib/mapping/reviewFlag";
 import { exportMappingDataAsJson } from "@/lib/mapping/exportMappingData";
 import type { Question } from "@/lib/schemas/question";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
@@ -16,13 +16,21 @@ export type QuestionListPanelProps = {
   regions: AnswerRegion[];
   selectedQuestionId: string | null;
   onSelectQuestion: (questionId: string) => void;
+  /** Region ids the Phase 9 handwriting cross-check flagged as disagreeing (see docs/PRD.md §16). */
+  mismatchedRegionIds?: ReadonlySet<string>;
 };
+
+const REVIEW_TOOLTIPS = {
+  "low-confidence": LOW_CONFIDENCE_TOOLTIP,
+  "handwriting-mismatch": HANDWRITING_MISMATCH_TOOLTIP,
+} as const;
 
 export function QuestionListPanel({
   questions,
   gradings,
   regions,
   onSelectQuestion,
+  mismatchedRegionIds = new Set(),
 }: QuestionListPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -47,10 +55,16 @@ export function QuestionListPanel({
 
   const summary = buildMappingSummary(gradings, regions);
 
-  const questionIdsNeedingReview = useMemo(
-    () => new Set(getRegionsNeedingReview(regions).map((r) => r.matchedQuestionId)),
-    [regions],
-  );
+  const reviewReasonByQuestionId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getReviewReason>>();
+    for (const region of regions) {
+      const reason = getReviewReason(region, mismatchedRegionIds);
+      if (reason && region.matchedQuestionId) {
+        map.set(region.matchedQuestionId, reason);
+      }
+    }
+    return map;
+  }, [regions, mismatchedRegionIds]);
 
   function handleExportJson() {
     exportMappingDataAsJson({ questions, regions, gradings, summary });
@@ -73,6 +87,8 @@ export function QuestionListPanel({
               ? "Unanswered"
               : `${grading.marksAwarded} / ${grading.marksTotal}`;
 
+          const reviewReason = reviewReasonByQuestionId.get(question.id);
+
           return (
             <QuestionCard
               key={question.id}
@@ -84,7 +100,8 @@ export function QuestionListPanel({
               feedback={grading?.feedback ?? null}
               isExpanded={expandedIds.has(question.id)}
               onToggleExpand={() => handleToggleExpand(question.id)}
-              needsReview={questionIdsNeedingReview.has(question.id)}
+              needsReview={reviewReason !== undefined}
+              {...(reviewReason ? { reviewTooltip: REVIEW_TOOLTIPS[reviewReason] } : {})}
             />
           );
         })}

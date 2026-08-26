@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { LoadingScreen } from "@/components/upload/LoadingScreen";
@@ -11,6 +11,7 @@ import { NoAnswerFoundState } from "@/components/mapping/NoAnswerFoundState";
 import { NoQuestionsFoundState } from "@/components/mapping/NoQuestionsFoundState";
 import { useMappingData, type MappingData } from "@/lib/mapping/useMappingData";
 import { useMappingSelection } from "@/lib/mapping/useMappingSelection";
+import { useHandwritingCrossCheck } from "@/lib/mapping/useHandwritingCrossCheck";
 
 function ErrorState({
   title,
@@ -60,6 +61,15 @@ function MappingScreen({
 }) {
   const { questions, regions, gradings } = data;
   const selection = useMappingSelection(questions, regions);
+  // Mobile only (Figma's phone frames replace the desktop two-panel layout
+  // with a "Questions | Answer Sheet" tab toggle — see
+  // "Question - Answer mapping screen - Question/answer toggle (phone)").
+  const [mobileTab, setMobileTab] = useState<"questions" | "answerSheet">("questions");
+  // Phase 9 (docs/PRD.md §16): runs after this screen has already rendered
+  // from Gemini's data — never blocks or delays the initial render.
+  const crossCheck = useHandwritingCrossCheck(viewerBlobUrls, regions);
+  const mismatchedRegionIds =
+    crossCheck.status === "done" ? crossCheck.mismatchedRegionIds : new Set<string>();
 
   if (questions.length === 0) {
     return (
@@ -74,24 +84,66 @@ function MappingScreen({
   const highlightLabel =
     selectedQuestion?.displayLabel ?? (selection.selectedUnmatchedRegionId ? "Unmatched" : null);
 
+  function selectQuestionAndShowAnswer(questionId: string) {
+    selection.selectQuestion(questionId);
+    setMobileTab("answerSheet");
+  }
+
+  function selectRegionAndShowAnswer(regionId: string) {
+    selection.selectUnmatchedRegion(regionId);
+    setMobileTab("answerSheet");
+  }
+
   return (
     <AppShell>
-      <div className="flex h-full gap-3">
-        <div className="flex w-[672px] shrink-0 flex-col gap-4 overflow-y-auto rounded-xl bg-surface-white/50 p-4">
+      <div className="flex h-full flex-col gap-3 lg:flex-row">
+        <div className="flex w-full items-center gap-1 rounded-full bg-surface-white p-1 shadow-realistic lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileTab("questions")}
+            className={`flex-1 rounded-full py-2 text-sm font-medium ${
+              mobileTab === "questions"
+                ? "bg-surface-dark-grey text-white"
+                : "text-ink-secondary"
+            }`}
+          >
+            Questions
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("answerSheet")}
+            className={`flex-1 rounded-full py-2 text-sm font-medium ${
+              mobileTab === "answerSheet"
+                ? "bg-surface-dark-grey text-white"
+                : "text-ink-secondary"
+            }`}
+          >
+            Answer Sheet
+          </button>
+        </div>
+
+        <div
+          className={`w-full flex-col gap-4 overflow-y-auto rounded-xl bg-surface-white/50 p-4 lg:flex lg:w-[672px] lg:shrink-0 ${
+            mobileTab === "questions" ? "flex" : "hidden"
+          }`}
+        >
           <QuestionListPanel
             questions={questions}
             gradings={gradings}
             regions={regions}
             selectedQuestionId={selection.selectedQuestionId}
-            onSelectQuestion={selection.selectQuestion}
+            onSelectQuestion={selectQuestionAndShowAnswer}
+            mismatchedRegionIds={mismatchedRegionIds}
           />
           <UnmatchedAnswersPanel
             unmatchedRegions={unmatchedRegions}
-            onSelectRegion={selection.selectUnmatchedRegion}
+            onSelectRegion={selectRegionAndShowAnswer}
             selectedRegionId={selection.selectedUnmatchedRegionId}
           />
         </div>
-        <div className="flex flex-1 flex-col">
+        <div
+          className={`flex-1 flex-col lg:flex ${mobileTab === "answerSheet" ? "flex" : "hidden"}`}
+        >
           {selection.hasNoAnswer ? (
             <NoAnswerFoundState
               questionLabel={`Question ${selectedQuestion?.displayLabel ?? ""}`}

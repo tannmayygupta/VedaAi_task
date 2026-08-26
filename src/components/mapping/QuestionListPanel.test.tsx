@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuestionListPanel } from "./QuestionListPanel";
+import { HANDWRITING_MISMATCH_TOOLTIP, LOW_CONFIDENCE_TOOLTIP } from "./QuestionCard";
 import type { Question } from "@/lib/schemas/question";
 import type { Grading } from "@/lib/schemas/grading";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
@@ -143,6 +144,65 @@ describe("QuestionListPanel", () => {
     );
 
     expect(screen.getAllByText("Verify")).toHaveLength(1);
+  });
+
+  it("flags a question with the handwriting-mismatch tooltip when its region id is in mismatchedRegionIds", () => {
+    const regionsWithConfidence: AnswerRegion[] = [
+      {
+        id: "r1",
+        pageIndex: 0,
+        boundingBox: { yMin: 0, xMin: 0, yMax: 100, xMax: 100 },
+        transcribedText: "Paris",
+        detectedLabel: "1",
+        matchedQuestionId: "q1",
+        matchConfidence: 0.95,
+        continuesFromRegionId: null,
+      },
+    ];
+
+    render(
+      <QuestionListPanel
+        questions={questions}
+        gradings={gradings}
+        regions={regionsWithConfidence}
+        selectedQuestionId={null}
+        onSelectQuestion={vi.fn()}
+        mismatchedRegionIds={new Set(["r1"])}
+      />,
+    );
+
+    expect(screen.getByText("Verify")).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveTextContent(HANDWRITING_MISMATCH_TOOLTIP);
+  });
+
+  it("prefers the handwriting-mismatch tooltip over the low-confidence one when both apply to the same region", () => {
+    const regionsWithConfidence: AnswerRegion[] = [
+      {
+        id: "r1",
+        pageIndex: 0,
+        boundingBox: { yMin: 0, xMin: 0, yMax: 100, xMax: 100 },
+        transcribedText: "Paris",
+        detectedLabel: "1",
+        matchedQuestionId: "q1",
+        matchConfidence: 0.1,
+        continuesFromRegionId: null,
+      },
+    ];
+
+    render(
+      <QuestionListPanel
+        questions={questions}
+        gradings={gradings}
+        regions={regionsWithConfidence}
+        selectedQuestionId={null}
+        onSelectQuestion={vi.fn()}
+        mismatchedRegionIds={new Set(["r1"])}
+      />,
+    );
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent(HANDWRITING_MISMATCH_TOOLTIP);
+    expect(tooltip).not.toHaveTextContent(LOW_CONFIDENCE_TOOLTIP);
   });
 
   it("exports the current questions, regions, and gradings as JSON when Export JSON is clicked", async () => {

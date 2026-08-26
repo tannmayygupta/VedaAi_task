@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { shouldFlagForReview, getRegionsNeedingReview, LOW_CONFIDENCE_THRESHOLD } from "./reviewFlag";
+import {
+  shouldFlagForReview,
+  getRegionsNeedingReview,
+  getReviewReason,
+  LOW_CONFIDENCE_THRESHOLD,
+} from "./reviewFlag";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
 
 function makeRegion(overrides: Partial<AnswerRegion> & { id: string }): AnswerRegion {
@@ -44,5 +49,32 @@ describe("getRegionsNeedingReview", () => {
     ];
     const flagged = getRegionsNeedingReview(regions);
     expect(flagged.map((r) => r.id)).toEqual(["r2", "r4"]);
+  });
+});
+
+describe("getReviewReason", () => {
+  it("returns null for a high-confidence, non-mismatched region", () => {
+    const region = makeRegion({ id: "r1", matchedQuestionId: "q1", matchConfidence: 0.9 });
+    expect(getReviewReason(region, new Set())).toBeNull();
+  });
+
+  it("returns 'low-confidence' for a matched region below the threshold with no cross-check mismatch", () => {
+    const region = makeRegion({ id: "r1", matchedQuestionId: "q1", matchConfidence: 0.3 });
+    expect(getReviewReason(region, new Set())).toBe("low-confidence");
+  });
+
+  it("returns 'handwriting-mismatch' when the region id is in the mismatch set, regardless of confidence", () => {
+    const region = makeRegion({ id: "r1", matchedQuestionId: "q1", matchConfidence: 0.99 });
+    expect(getReviewReason(region, new Set(["r1"]))).toBe("handwriting-mismatch");
+  });
+
+  it("prioritizes 'handwriting-mismatch' over 'low-confidence' when both apply", () => {
+    const region = makeRegion({ id: "r1", matchedQuestionId: "q1", matchConfidence: 0.1 });
+    expect(getReviewReason(region, new Set(["r1"]))).toBe("handwriting-mismatch");
+  });
+
+  it("never flags an unmatched region for either reason", () => {
+    const region = makeRegion({ id: "r1", matchedQuestionId: null, matchConfidence: 0.1 });
+    expect(getReviewReason(region, new Set(["r1"]))).toBeNull();
   });
 });

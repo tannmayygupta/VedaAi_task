@@ -25,3 +25,29 @@ export function shouldFlagForReview(region: Pick<AnswerRegion, "matchedQuestionI
 export function getRegionsNeedingReview(regions: AnswerRegion[]): AnswerRegion[] {
   return regions.filter(shouldFlagForReview);
 }
+
+export type ReviewReason = "low-confidence" | "handwriting-mismatch";
+
+/**
+ * Combines the pre-existing low-confidence flag with the Phase 9 handwriting
+ * cross-check (docs/PRD.md §16): a region can be flagged for either reason
+ * (or both — if both apply, the handwriting mismatch takes priority since a
+ * "the two AI readers disagree" signal is a more concrete, actionable
+ * discrepancy than a bare confidence score). `matchedQuestionId: null`
+ * regions are never flagged, same as `shouldFlagForReview`.
+ */
+export function getReviewReason(
+  region: Pick<AnswerRegion, "id" | "matchedQuestionId" | "matchConfidence">,
+  mismatchedRegionIds: ReadonlySet<string>,
+): ReviewReason | null {
+  if (region.matchedQuestionId === null) {
+    return null;
+  }
+  if (mismatchedRegionIds.has(region.id)) {
+    return "handwriting-mismatch";
+  }
+  if (region.matchConfidence < LOW_CONFIDENCE_THRESHOLD) {
+    return "low-confidence";
+  }
+  return null;
+}

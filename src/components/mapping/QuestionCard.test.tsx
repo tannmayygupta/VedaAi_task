@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QuestionCard, LOW_CONFIDENCE_TOOLTIP } from "./QuestionCard";
+import { QuestionCard, LOW_CONFIDENCE_TOOLTIP, HANDWRITING_MISMATCH_TOOLTIP } from "./QuestionCard";
 
 function renderCard(overrides: Partial<Parameters<typeof QuestionCard>[0]> = {}) {
   const onToggleExpand = vi.fn();
@@ -88,5 +88,11 @@ describe("QuestionCard", () => {
     renderCard({ needsReview: true });
     expect(screen.getByText("Verify")).toBeInTheDocument();
     expect(screen.getByRole("tooltip")).toHaveTextContent(LOW_CONFIDENCE_TOOLTIP);
+  });
+
+  it("shows the handwriting-mismatch tooltip when reviewTooltip overrides the default", () => {
+    renderCard({ needsReview: true, reviewTooltip: HANDWRITING_MISMATCH_TOOLTIP });
+    expect(screen.getByText("Verify")).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveTextContent(HANDWRITING_MISMATCH_TOOLTIP);
   });
 });

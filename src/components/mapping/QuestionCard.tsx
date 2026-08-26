@@ -8,6 +8,9 @@ import { Tooltip } from "./Tooltip";
 export const LOW_CONFIDENCE_TOOLTIP =
   "Helps the teacher know where to double-check the AI's work instead of blindly trusting it.";
 
+export const HANDWRITING_MISMATCH_TOOLTIP =
+  "Our two AI readers disagreed on this handwriting — please double-check.";
+
 export type QuestionCardProps = {
   displayLabel: string;
   subpartLetter?: string;
@@ -18,6 +21,8 @@ export type QuestionCardProps = {
   isExpanded: boolean;
   onToggleExpand: () => void;
   needsReview?: boolean;
+  /** Overrides the default low-confidence tooltip text (e.g. for a handwriting cross-check mismatch). */
+  reviewTooltip?: string;
 };
 
 function badgeContent(displayLabel: string, subpartLetter?: string): string {
@@ -38,6 +43,7 @@ export function QuestionCard({
   isExpanded,
   onToggleExpand,
   needsReview = false,
+  reviewTooltip = LOW_CONFIDENCE_TOOLTIP,
 }: QuestionCardProps) {
   const { background, text } = getScoreTierClasses(scoreTier);
 
@@ -62,14 +68,14 @@ export function QuestionCard({
           </div>
         )}
 
-        <div className="flex-1 text-base text-ink-primary">{questionText}</div>
+        <div className="min-w-0 flex-1 break-words text-base text-ink-primary">{questionText}</div>
 
         <div className={`rounded-full px-3 py-1 text-base font-bold ${background} ${text}`}>
           {scoreLabel}
         </div>
 
         {needsReview && (
-          <Tooltip label={LOW_CONFIDENCE_TOOLTIP}>
+          <Tooltip label={reviewTooltip}>
             <span className="flex items-center gap-1 rounded-full bg-warning-tint px-2 py-1 text-xs font-bold text-warning">
               <TriangleAlert className="size-3.5" aria-hidden="true" />
               Verify
