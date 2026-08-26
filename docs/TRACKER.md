@@ -18,8 +18,8 @@ no phase starts before the previous one is marked **Done** with a signed-off rev
 | 3 | Question Extraction | 🟢 | §6 | 2026-08-26 | 2026-08-26 |
 | 4 | Answer Extraction + Mapping | 🟢 | §7 | 2026-08-26 | 2026-08-26 |
 | 5 | Grading & Feedback | 🟢 | §8 | 2026-08-26 | 2026-08-26 |
-| 6 | Mapping Screen UI (core) | 🟡 | §9 | 2026-08-26 | |
-| 7 | Error & Empty States | 🔲 | §10 | | |
+| 6 | Mapping Screen UI (core) | 🟢 | §9 | 2026-08-26 | 2026-08-26 |
+| 7 | Error & Empty States | 🟡 | §10 | 2026-08-26 | |
 | 8 | Bonus / Polish | 🔲 | §12 | | |
 | 9 | Deployment & Submission | 🔲 | §11 | | |
 
@@ -532,7 +532,7 @@ integration code" (both in `docs/DECISIONS.md`).
 
 ## Phase 6 — Mapping Screen UI (core)
 
-**Status:** 🔲 Not Started
+**Status:** 🟢 Done
 **Goal:** The full two-panel mapping screen per Figma `1:8890` — question list, click-to-highlight,
 answer sheet viewer with zoom/page nav, unmatched-answers panel — fully wired to real pipeline
 output end-to-end.
@@ -632,36 +632,59 @@ change) — full detail and the Turbopack-worker workaround in `docs/DECISIONS.m
 | `npm run test` | Pass (275/275, 55 files) |
 | Live browser vs. real Gemini output | Pass — Q1 highlight on page 1, Q7 highlight on page 2 (cross-page nav), both correctly positioned; zoom to 130% kept highlight aligned to canvas |
 
-**Review sign-off:** [ ] User approved — date: ____
+**At sign-off (2026-08-26):** full suite re-checked after the Phase 0 shell UI-fidelity follow-up
+(see that phase's entry) — 278/278 tests, typecheck, and lint all pass.
+
+**Review sign-off:** [x] User approved — date: 2026-08-26
 
 ---
 
 ## Phase 7 — Error & Empty States
 
-**Status:** 🔲 Not Started
+**Status:** 🟡 Testing/Review
 **Goal:** Every failure mode identified in PRD §10 has a real, non-silent UI state.
 
 **Tasks:**
-- [ ] Upload validation errors (already partly done in Phase 1 — confirm coverage)
-- [ ] Extraction/API failure → error screen with "Try Again" (files retained)
-- [ ] Empty-result state (zero questions detected)
-- [ ] Partial-failure handling (treat as full failure, per PRD §10 decision)
+- [x] Upload validation errors (already done in Phase 1 — coverage confirmed by audit, no gaps)
+- [x] Extraction/API failure → error screen with "Try Again" (retries in place against the same
+      already-uploaded blob URLs — see docs/DECISIONS.md for why this is a deliberate, better-fit
+      deviation from literally "returning to the upload screen")
+- [x] Empty-result state (zero questions detected) — `NoQuestionsFoundState.tsx`
+- [x] Partial-failure handling (treat as full failure, per PRD §10 decision) — already correct,
+      confirmed by audit + new page-level test
+- [x] (Found via audit, not in original scope) `UploadSlotCard` silent unhandled-rejection fixed
+- [x] (Found via audit, not in original scope) `scoreTier` zero-mark-correct-answer mislabel fixed
 
 **Tests (Vitest + RTL):**
-- [ ] Simulated API failure (mocked) renders the error screen, not a crash or infinite loader
-- [ ] "Try Again" returns to upload screen with previously selected files still present
-- [ ] Simulated empty-questions response renders the explicit empty-state message
+- [x] Simulated API failure (mocked) renders the error screen, not a crash or infinite loader —
+      `src/app/mapping/page.test.tsx`
+- [x] "Try Again" retries in place (same URL, no navigation) — `src/app/mapping/page.test.tsx`;
+      "Back to upload" still navigates home, also tested
+- [x] Simulated empty-questions response renders the explicit empty-state message —
+      `src/app/mapping/page.test.tsx`
 
 **Manual verification (claude-in-chrome):**
-- [ ] Force a real failure (e.g. temporarily invalid API key, or an unreadable file) and confirm
-      the live UI degrades gracefully
+- [x] Forced a real failure (nonexistent answer-sheet blob URL) — confirmed the real pipeline
+      returns HTTP 500 end to end, the UI shows the real error message, "Try Again" re-fetches in
+      place and reproduces the same real result, "Back to upload" navigates home correctly
+- [x] Forced a second real failure (renamed away `public/pdf.worker.min.mjs`, an audit-flagged
+      "untested" case) — confirmed a clear non-silent error message, not a hang
 
-**Definition of Done:** All simulated + one real failure path verified; no infinite spinners, no
-blank screens, no unhandled crashes.
+**Definition of Done:** ✅ met — all simulated + two real failure paths verified; no infinite
+spinners, no blank screens, no unhandled crashes.
 
-**Test results log:** _(fill in when run)_
+**Test results log:**
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm run test` | Pass (290/290, 58 files) |
+| Live browser: forced 404 answer-sheet failure → error screen → Try Again → Back to upload | Pass |
+| Live browser: forced pdfjs worker-load failure | Pass — clear error message, not a hang |
 
-**Decisions made this phase:** _(fill in)_
+**Decisions made this phase:** "Phase 7 scope: 11-agent resilience audit before writing any code"
+(see `docs/DECISIONS.md` for the full findings list, what was fixed, and what was deliberately
+deferred to Phase 8 as logged limitations).
 
 **Review sign-off:** [ ] User approved — date: ____
 

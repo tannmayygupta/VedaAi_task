@@ -345,7 +345,10 @@ implementation" score:
 
 - **Upload validation errors** (wrong type, too large) — inline on the dropzone.
 - **Extraction failure** (API error, timeout, unreadable file) — full-panel error state with a
-  "Try Again" action that returns to the upload screen with files retained.
+  "Try Again" action that re-runs extraction in place against the same already-uploaded blob URLs
+  (no navigation, no re-upload needed — see docs/DECISIONS.md for why this fits better than
+  literally returning to the upload screen), plus a secondary "Back to upload" action for a full
+  restart.
 - **Partial extraction** (e.g. question extraction succeeded, answer extraction failed) — treat
   as a full failure for this MVP (don't show a half-populated mapping screen) — retry the whole
   pipeline.

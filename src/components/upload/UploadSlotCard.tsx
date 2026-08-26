@@ -20,6 +20,8 @@ const ERROR_MESSAGES: Record<NonNullable<UploadSlotState["error"]>, string> = {
   "too-large": "File is too large — max 10MB per file.",
 };
 
+const UNREADABLE_FILE_MESSAGE = "Couldn't read this file — it may be corrupted. Try a different file.";
+
 export function UploadSlotCard({
   label,
   accentLabel,
@@ -28,17 +30,32 @@ export function UploadSlotCard({
   onRemove,
 }: UploadSlotCardProps) {
   const [pageCount, setPageCount] = useState(1);
+  const [unreadable, setUnreadable] = useState(false);
 
   useEffect(() => {
-    if (slotState.files.length === 0) {
-      return;
-    }
     let cancelled = false;
-    normalizeSlotFiles(slotState.files).then((summary) => {
-      if (!cancelled) {
-        setPageCount(summary.totalPages);
+
+    async function run() {
+      if (!cancelled) setUnreadable(false);
+      if (slotState.files.length === 0) {
+        return;
       }
-    });
+      try {
+        const summary = await normalizeSlotFiles(slotState.files);
+        if (!cancelled) {
+          setPageCount(summary.totalPages);
+        }
+      } catch {
+        // e.g. a corrupted PDF that passed type/size validation but pdfjs-dist
+        // can't parse for a page count — surface it instead of leaving the
+        // file chip silently showing a stale/wrong page count.
+        if (!cancelled) {
+          setUnreadable(true);
+        }
+      }
+    }
+
+    run();
     return () => {
       cancelled = true;
     };
@@ -65,6 +82,7 @@ export function UploadSlotCard({
       {slotState.error && (
         <p className="text-sm text-danger">{ERROR_MESSAGES[slotState.error]}</p>
       )}
+      {unreadable && <p className="text-sm text-danger">{UNREADABLE_FILE_MESSAGE}</p>}
     </div>
   );
 }

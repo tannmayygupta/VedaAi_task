@@ -43,7 +43,10 @@ export function scoreTier(
   if (grading.correctness === "unanswered") {
     return "unanswered";
   }
-  if (grading.marksTotal > 0 && grading.marksAwarded === grading.marksTotal) {
+  if (grading.marksTotal === 0) {
+    return grading.correctness === "correct" ? "full" : "zero";
+  }
+  if (grading.marksAwarded === grading.marksTotal) {
     return "full";
   }
   if (grading.marksAwarded === 0) {

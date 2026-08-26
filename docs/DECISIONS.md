@@ -825,3 +825,85 @@ icon placement are a close match; exact colors/sizes for the illustration rings 
 using existing design tokens (`--color-danger-tint`, `--color-brand-orange`) rather than pulling
 exact hex values from Figma, since further Figma MCP calls hit the Starter plan's rate limit
 mid-session.
+
+## [2026-08-26] Phase 7 scope: 11-agent resilience audit before writing any code
+
+**Decision:** Before implementing Phase 7 (Error & Empty States), ran an 11-agent parallel
+read-only audit across the whole app — not just the 4 PRD §10 bullets — each agent covering a
+distinct area (upload flow, question-extraction route, answer-extraction/mapping route,
+mapping-page data-fetching, PDF rendering, empty-state UI rendering, grading/summary math, API
+timeouts, Gemini error-code normalization, existing test-coverage inventory, and a Figma check for
+undiscovered error-state designs). Implemented only the confirmed, in-scope findings; deferred the
+rest as logged limitations rather than expanding scope indefinitely.
+
+**Why:** Phase 7's own goal statement ("every failure mode... has a real, non-silent UI state") is
+broader than its 4 example bullets, and this codebase has grown substantially since Phase 0-6 —
+a single read-through wouldn't reliably surface every silent-failure spot across upload,
+extraction, mapping, grading, and PDF rendering. A broad audit-then-fix sequence (multi-modal
+sweep, per the project's established multi-agent patterns) catches real bugs a narrower pass
+would miss, while keeping the actual code changes small and precisely scoped — confirmed useful in
+practice: the audit caught two genuinely silent bugs (below) that weren't in the PRD's own list.
+
+**Findings confirmed and fixed:**
+1. **Empty questions (PRD §10):** no empty-state existed; a zero-question result rendered a blank
+   `QuestionListPanel` and a nonsensical "0/0 (0%)" summary. Added `NoQuestionsFoundState.tsx`
+   (paper-level, modeled on the existing per-question `NoAnswerFoundState.tsx` pattern), wired into
+   `MappingScreen` before the two-panel layout renders.
+2. **Extraction failure retry (PRD §10):** the error screen's only action, "Back to upload",
+   navigated to `/` and lost the already-uploaded blob URLs entirely (a hard reset, not a retry) —
+   confusing given the files are already durably in Vercel Blob by the time this screen is
+   reachable. Added `retry()` to `useMappingData` (a retry-counter dependency that re-runs the same
+   effect against the same URLs) and a "Try Again" primary action in `ErrorState`
+   (`src/app/mapping/page.tsx`) that calls it — verified live against a real backend (see below)
+   that it re-fetches in place without navigating away.
+3. **Partial extraction = full failure (PRD §10):** already correctly implemented and hook-tested;
+   the only real gap was missing page-level test coverage (`app/mapping/page.tsx` had no test file
+   at all). Added `src/app/mapping/page.test.tsx` covering the error state, the empty-questions
+   state, the missing-files state, and both error-screen buttons.
+4. **`UploadSlotCard`'s silent unhandled-rejection:** `normalizeSlotFiles(...).then(...)` had no
+   `.catch()` — a corrupted PDF that passed type/size validation but failed pdfjs-dist page-count
+   parsing left the file chip silently showing a stale "accepted" state with no error. Added a
+   local error state + message ("Couldn't read this file — it may be corrupted").
+5. **`scoreTier` mislabeling:** a correctly-answered zero-mark question (`marksTotal: 0,
+   correctness: "correct"`) fell through to the "zero"/danger-styled tier instead of "full", since
+   the full-marks check required `marksTotal > 0`. One-line fix in `src/lib/schemas/grading.ts`.
+
+**Deferred (real findings, intentionally not fixed this phase — logged as known limitations, not
+silently dropped):**
+- Error codes (`quota-exceeded`, `unreadable-file`, `network-error`, etc.) are computed correctly
+  server-side but discarded at the `useMappingData` boundary — every failure shows the same generic
+  panel, differing only by raw message text. Not required by PRD §10's literal ask (a single error
+  panel with retry); a `code`-aware friendly-message map is a reasonable Phase 8 polish item.
+- No client-side timeout/`AbortController` on any fetch, and `LoadingScreen` has no cancel/elapsed-
+  time escape hatch — a genuine network-level hang (not a slow-but-completing call) would show
+  "Extracting…"/"Uploading…" indefinitely. PRD §11 explicitly frames some wait as expected; adding
+  a client-side timeout mirroring the API routes' `maxDuration=60` is a reasonable Phase 8 item.
+- PDF page-index bounds-checking: a hallucinated out-of-range `pageIndex` from Gemini isn't
+  validated before being passed to pdfjs — already non-silent today (surfaces via
+  `PdfPageCanvas`'s existing "Couldn't render this page" error), just not friendly copy. Low
+  priority given it's already visible, not silent.
+- Figma audit for dedicated error/empty-state designs was inconclusive (hit the same Starter-plan
+  MCP rate limit as the earlier UI-fidelity check) — proceeding on the PRD's own existing
+  assumption ("not explicitly in the Figma mockups") since it was already documented as an
+  assumption, not re-verified as fact.
+
+**Real-failure verification (live browser, per the phase's own manual-check requirement):**
+Forced two genuine failures rather than only relying on mocks: (a) pointed the answer-sheet blob
+URL at a nonexistent file — confirmed the real pipeline returns HTTP 500 with `unreadable-file`
+end to end, the UI shows "Something went wrong" with the real message, clicking "Try Again"
+re-fetches in place (same URL, no navigation) and reproduces the same real result, and "Back to
+upload" correctly navigates home; (b) renamed `public/pdf.worker.min.mjs` away to simulate a
+worker-load failure (an audit-flagged "untested/uncertain" case) — confirmed it surfaces a clear
+error message ("Couldn't preview this PDF: Setting up fake worker failed...") rather than hanging
+silently, closing out that open question as "handled acceptably." Both real Gemini calls during
+this verification took noticeably longer than earlier in the day (11-26s per call, vs. the
+low-teens seen in prior phases) — attributed to normal API latency variance, not a regression;
+confirmed by retrying and getting consistent (if slow) real results rather than hangs.
+
+**Trade-offs / risks:** The deferred items above are real, not imaginary — if a future phase's
+scope touches error messaging or long-running-request UX, revisit this list first rather than
+re-discovering the same gaps. The 11-agent audit itself found things a human skim likely would
+have missed (the `UploadSlotCard` unhandled rejection and the `scoreTier` zero-mark bug both
+required tracing async control flow and a narrow numeric edge case, respectively) — this validates
+running a broad audit before writing fixes as the default approach for future "harden this area"
+phases, not just this one.

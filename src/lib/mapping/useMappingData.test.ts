@@ -71,6 +71,30 @@ describe("useMappingData", () => {
     expect(result.current.message).toBe("mapping failed");
   });
 
+  it("retry() re-runs both fetches against the same URLs without navigating away", async () => {
+    const fetchMock = vi.fn();
+    fetchMock
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "server hiccup" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ questions: [{ id: "q1" }] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ regions: [], gradings: [], summary: {} }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useMappingData("qp.pdf", "as.pdf"));
+    await waitFor(() => expect(result.current.status).toBe("error"));
+
+    result.current.retry();
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // Still the same blob URLs — a retry re-fetches in place, it doesn't
+    // require the caller to navigate elsewhere or re-select files.
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).blobUrl).toBe("qp.pdf");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).blobUrl).toBe("qp.pdf");
+  });
+
   it("chains the second call with the questions returned by the first", async () => {
     const fetchMock = vi.fn();
     fetchMock

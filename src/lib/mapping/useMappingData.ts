@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Question } from "@/lib/schemas/question";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
 import type { Grading } from "@/lib/schemas/grading";
@@ -18,18 +18,28 @@ export type MappingDataState =
   | { status: "error"; message: string }
   | { status: "ready"; data: MappingData };
 
+export type UseMappingDataResult = MappingDataState & { retry: () => void };
+
 /**
  * Fetches the full pipeline result for the mapping screen: first extracts
  * questions from the question-paper blob, then (using those questions)
  * extracts+maps+grades answers from the answer-sheet blob. Runs once per
  * distinct (questionPaperUrl, answerSheetUrl) pair; re-runs automatically if
- * either URL changes.
+ * either URL changes, or on demand via `retry()` — which re-fetches against
+ * the same already-uploaded blob URLs rather than requiring the user to
+ * re-select/re-upload files (see docs/DECISIONS.md).
+ *
+ * If the question-extraction call succeeds but the answer-extraction call
+ * fails, the whole result settles to `{status: "error"}` — the successfully
+ * fetched questions are discarded rather than shown as a half-populated
+ * mapping screen (PRD §10: partial extraction = full failure).
  */
 export function useMappingData(
   questionPaperUrl: string,
   answerSheetUrl: string,
-): MappingDataState {
+): UseMappingDataResult {
   const [state, setState] = useState<MappingDataState>({ status: "loading" });
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +95,9 @@ export function useMappingData(
     return () => {
       cancelled = true;
     };
-  }, [questionPaperUrl, answerSheetUrl]);
+  }, [questionPaperUrl, answerSheetUrl, retryCount]);
 
-  return state;
+  const retry = useCallback(() => setRetryCount((count) => count + 1), []);
+
+  return { ...state, retry };
 }

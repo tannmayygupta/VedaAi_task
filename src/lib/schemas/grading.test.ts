@@ -75,4 +75,12 @@ describe("scoreTier", () => {
       "unanswered",
     );
   });
+
+  it("returns 'full' for a correctly-answered zero-mark question, not 'zero'", () => {
+    expect(scoreTier({ marksAwarded: 0, marksTotal: 0, correctness: "correct" })).toBe("full");
+  });
+
+  it("returns 'zero' for an incorrectly-answered zero-mark question", () => {
+    expect(scoreTier({ marksAwarded: 0, marksTotal: 0, correctness: "incorrect" })).toBe("zero");
+  });
 });

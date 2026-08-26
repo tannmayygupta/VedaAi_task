@@ -8,22 +8,44 @@ import { QuestionListPanel } from "@/components/mapping/QuestionListPanel";
 import { AnswerSheetViewer } from "@/components/mapping/AnswerSheetViewer";
 import { UnmatchedAnswersPanel } from "@/components/mapping/UnmatchedAnswersPanel";
 import { NoAnswerFoundState } from "@/components/mapping/NoAnswerFoundState";
+import { NoQuestionsFoundState } from "@/components/mapping/NoQuestionsFoundState";
 import { useMappingData, type MappingData } from "@/lib/mapping/useMappingData";
 import { useMappingSelection } from "@/lib/mapping/useMappingSelection";
 
-function ErrorState({ title, message, router }: { title: string; message: string; router: ReturnType<typeof useRouter> }) {
+function ErrorState({
+  title,
+  message,
+  router,
+  onRetry,
+}: {
+  title: string;
+  message: string;
+  router: ReturnType<typeof useRouter>;
+  onRetry?: () => void;
+}) {
   return (
     <AppShell>
       <div className="flex h-full min-h-[600px] flex-col items-center justify-center gap-3 text-center">
         <p className="text-lg font-bold text-ink-primary">{title}</p>
         <p className="text-sm text-ink-secondary">{message}</p>
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          className="mt-2 rounded-pill bg-surface-dark-grey px-6 py-3 text-sm font-medium text-white"
-        >
-          Back to upload
-        </button>
+        <div className="mt-2 flex items-center gap-3">
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-pill bg-brand-orange px-6 py-3 text-sm font-medium text-white"
+            >
+              Try Again
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="rounded-pill bg-surface-dark-grey px-6 py-3 text-sm font-medium text-white"
+          >
+            Back to upload
+          </button>
+        </div>
       </div>
     </AppShell>
   );
@@ -38,6 +60,15 @@ function MappingScreen({
 }) {
   const { questions, regions, gradings } = data;
   const selection = useMappingSelection(questions, regions);
+
+  if (questions.length === 0) {
+    return (
+      <AppShell>
+        <NoQuestionsFoundState />
+      </AppShell>
+    );
+  }
+
   const unmatchedRegions = regions.filter((r) => r.matchedQuestionId === null);
   const selectedQuestion = questions.find((q) => q.id === selection.selectedQuestionId);
   const highlightLabel =
@@ -115,7 +146,14 @@ function MappingPageContent() {
   }
 
   if (dataState.status === "error") {
-    return <ErrorState title="Something went wrong" message={dataState.message} router={router} />;
+    return (
+      <ErrorState
+        title="Something went wrong"
+        message={dataState.message}
+        router={router}
+        onRetry={dataState.retry}
+      />
+    );
   }
 
   return <MappingScreen data={dataState.data} viewerBlobUrls={viewerBlobUrls} />;
