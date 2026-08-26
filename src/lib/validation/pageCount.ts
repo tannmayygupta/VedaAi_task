@@ -1,11 +1,9 @@
-const PAGE_MARKER_REGEX = /\/Type\s*\/Page(?!s)\b/g;
+import { getPdfDocument } from "@/lib/pdf/pdfjs";
 
 export async function countPagesInPdf(file: File): Promise<number> {
-  const buffer = await file.arrayBuffer();
-  const text = new TextDecoder("latin1").decode(new Uint8Array(buffer));
-  const matches = text.match(PAGE_MARKER_REGEX);
-  const count = matches?.length ?? 0;
-  return count > 0 ? count : 1;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const pdf = await getPdfDocument(bytes);
+  return pdf.numPages;
 }
 
 export async function countPagesForSlotFiles(files: File[]): Promise<number> {

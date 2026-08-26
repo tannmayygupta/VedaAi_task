@@ -4,10 +4,13 @@ import { useState } from "react";
 import { ZoomControl } from "./ZoomControl";
 import { PageNavigator } from "./PageNavigator";
 import { AnswerHighlight } from "./AnswerHighlight";
+import { PdfPageCanvas } from "./PdfPageCanvas";
 import {
   resolveAnswerSheetPageSource,
   getAnswerSheetPageCount,
+  PDF_URL_PATTERN,
 } from "@/lib/mapping/answerSheetPageSource";
+import { usePdfDocument } from "@/lib/mapping/usePdfDocument";
 import type { AnswerRegion } from "@/lib/schemas/answerRegion";
 
 export type AnswerSheetViewerProps = {
@@ -18,6 +21,12 @@ export type AnswerSheetViewerProps = {
   highlightLabel: string | null;
 };
 
+// Fixed render resolution for PDF pages — high enough to stay crisp at the
+// zoom control's max (200%). Zoom itself is applied via CSS on the wrapper,
+// same as the image path, rather than re-rendering the PDF on every zoom
+// step (see docs/DECISIONS.md).
+const PDF_RENDER_SCALE = 2;
+
 export function AnswerSheetViewer({
   blobUrls,
   currentPageIndex,
@@ -27,8 +36,16 @@ export function AnswerSheetViewer({
 }: AnswerSheetViewerProps) {
   const [zoomPercent, setZoomPercent] = useState(100);
 
-  const totalPages = getAnswerSheetPageCount(blobUrls);
-  const pageSource = resolveAnswerSheetPageSource(blobUrls, currentPageIndex);
+  const url = blobUrls[0] ?? null;
+  const isPdf = url !== null && PDF_URL_PATTERN.test(url);
+  const pdfDocument = usePdfDocument(isPdf ? url : null);
+
+  const totalPages = isPdf
+    ? pdfDocument.status === "ready"
+      ? pdfDocument.numPages
+      : 1
+    : getAnswerSheetPageCount(blobUrls);
+  const pageSource = isPdf ? null : resolveAnswerSheetPageSource(blobUrls, currentPageIndex);
   const regionsOnThisPage = highlightRegions.filter((r) => r.pageIndex === currentPageIndex);
 
   return (
@@ -51,7 +68,32 @@ export function AnswerSheetViewer({
       </div>
 
       <div className="flex flex-1 items-center justify-center overflow-auto p-4">
-        {pageSource?.kind === "image" && (
+        {isPdf && pdfDocument.status === "loading" && (
+          <p className="text-sm text-ink-secondary">Loading answer sheet…</p>
+        )}
+        {isPdf && pdfDocument.status === "error" && (
+          <p className="text-sm text-ink-secondary">
+            Couldn&apos;t preview this PDF: {pdfDocument.message}
+          </p>
+        )}
+        {isPdf && pdfDocument.status === "ready" && (
+          <div className="relative" style={{ width: `${zoomPercent}%`, maxWidth: "100%" }}>
+            <PdfPageCanvas
+              getPage={pdfDocument.getPage}
+              pageNumber={currentPageIndex + 1}
+              scale={PDF_RENDER_SCALE}
+              className="w-full rounded-lg"
+            />
+            {regionsOnThisPage.map((region) => (
+              <AnswerHighlight
+                key={region.id}
+                boundingBox={region.boundingBox}
+                label={highlightLabel ?? ""}
+              />
+            ))}
+          </div>
+        )}
+        {!isPdf && pageSource?.kind === "image" && (
           <div className="relative" style={{ width: `${zoomPercent}%`, maxWidth: "100%" }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- externally-hosted Blob URL, next/image is unnecessary here */}
             <img
@@ -68,15 +110,7 @@ export function AnswerSheetViewer({
             ))}
           </div>
         )}
-        {pageSource?.kind === "unsupported-pdf-page" && (
-          <div className="max-w-sm text-center text-sm text-ink-secondary">
-            <p>
-              This answer sheet is a PDF — page-by-page preview isn&apos;t available yet, but
-              extraction and mapping across every page still works correctly.
-            </p>
-          </div>
-        )}
-        {!pageSource && <p className="text-sm text-ink-secondary">No page to display.</p>}
+        {!isPdf && !pageSource && <p className="text-sm text-ink-secondary">No page to display.</p>}
       </div>
     </div>
   );

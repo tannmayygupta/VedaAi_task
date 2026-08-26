@@ -20,6 +20,14 @@ vi.mock("@/lib/upload/mergeFilesToPdf", () => ({
   mergeFilesToPdf: vi.fn(async () => new File(["merged"], "merged.pdf", { type: "application/pdf" })),
 }));
 
+// This screen's page-count chip (via normalizeSlotFiles) calls into real
+// pdfjs-dist for PDF files, which needs a real worker/canvas environment
+// jsdom doesn't provide — irrelevant to what these tests actually check, so
+// stub a page count instead of exercising the real PDF parser.
+vi.mock("@/lib/pdf/pdfjs", () => ({
+  getPdfDocument: vi.fn(async () => ({ numPages: 1 })),
+}));
+
 function makeFile(name: string, type: string) {
   return new File(["content"], name, { type });
 }

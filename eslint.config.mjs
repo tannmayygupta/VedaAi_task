@@ -23,6 +23,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // pdf.worker.min.mjs is copied from node_modules/pdfjs-dist by
+    // scripts/copy-pdf-worker.mjs (postinstall) — a minified third-party
+    // build artifact, not source to lint.
+    "public/pdf.worker.min.mjs",
   ]),
 ]);
 

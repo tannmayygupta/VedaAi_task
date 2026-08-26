@@ -602,6 +602,21 @@ single PDF client-side (`src/lib/upload/mergeFilesToPdf.ts`) and go through the 
 single-PDF pipeline. See the corresponding `docs/DECISIONS.md` entry for the research and
 verification behind this.
 
+**Post-sign-off follow-up #2 (2026-08-26):** the resulting "PDF preview isn't available yet" gap
+(inherited by merged multi-image sheets once they became PDFs) was also resolved before sign-off —
+added `pdfjs-dist` to render real PDF pages to canvas, so the highlight overlay now works for PDF
+answer sheets (both natively-uploaded and merged) the same way it already worked for raw images,
+with real per-PDF page counts replacing the old hardcoded "1 page." Verified end-to-end against
+real Gemini output (Q1/page 1 and Q7/page 2 both highlighted correctly, aligned through a zoom
+change) — full detail and the Turbopack-worker workaround in `docs/DECISIONS.md`. Test results:
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm run test` | Pass (275/275, 55 files) |
+| Live browser vs. real Gemini output | Pass — Q1 highlight on page 1, Q7 highlight on page 2 (cross-page nav), both correctly positioned; zoom to 130% kept highlight aligned to canvas |
+
 **Review sign-off:** [ ] User approved — date: ____
 
 ---

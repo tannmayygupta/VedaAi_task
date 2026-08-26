@@ -19,3 +19,6 @@ next-env.d.ts
 
 bash.exe.stackdump
 .claude/
+
+# Copied from node_modules/pdfjs-dist by scripts/copy-pdf-worker.mjs (postinstall)
+/public/pdf.worker.min.mjs

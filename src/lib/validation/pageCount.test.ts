@@ -1,25 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { countPagesForSlotFiles, countPagesInPdf } from "./pageCount";
 
-function buildFakePdf(pageCount: number): File {
-  const kids = Array.from({ length: pageCount }, (_, i) => `${i + 2} 0 R`).join(" ");
-  const pagesObj = `1 0 obj\n<< /Type /Pages /Count ${pageCount} /Kids [${kids}] >>\nendobj\n`;
-  const pageObjs = Array.from(
-    { length: pageCount },
-    (_, i) => `${i + 2} 0 obj\n<< /Type /Page /Parent 1 0 R >>\nendobj\n`,
-  ).join("");
-  return new File([pagesObj + pageObjs], "test.pdf", { type: "application/pdf" });
+const { getPdfDocumentMock } = vi.hoisted(() => ({ getPdfDocumentMock: vi.fn() }));
+
+vi.mock("@/lib/pdf/pdfjs", () => ({
+  getPdfDocument: getPdfDocumentMock,
+}));
+
+function buildFakePdf(): File {
+  return new File(["%PDF-1.4 fake content"], "test.pdf", { type: "application/pdf" });
 }
 
 describe("countPagesInPdf", () => {
-  it("counts /Type /Page objects without double-counting the /Type /Pages root", async () => {
-    const file = buildFakePdf(3);
-    await expect(countPagesInPdf(file)).resolves.toBe(3);
+  it("returns the real page count from pdfjs-dist", async () => {
+    getPdfDocumentMock.mockResolvedValueOnce({ numPages: 3 });
+    await expect(countPagesInPdf(buildFakePdf())).resolves.toBe(3);
   });
 
-  it("falls back to 1 when no recognizable page markers are found", async () => {
-    const file = new File(["not a pdf at all"], "empty.pdf", { type: "application/pdf" });
-    await expect(countPagesInPdf(file)).resolves.toBe(1);
+  it("returns 1 for a single-page PDF", async () => {
+    getPdfDocumentMock.mockResolvedValueOnce({ numPages: 1 });
+    await expect(countPagesInPdf(buildFakePdf())).resolves.toBe(1);
   });
 });
 
@@ -43,7 +43,7 @@ describe("countPagesForSlotFiles", () => {
   });
 
   it("delegates to countPagesInPdf for a single PDF", async () => {
-    const pdf = buildFakePdf(4);
-    await expect(countPagesForSlotFiles([pdf])).resolves.toBe(4);
+    getPdfDocumentMock.mockResolvedValueOnce({ numPages: 4 });
+    await expect(countPagesForSlotFiles([buildFakePdf()])).resolves.toBe(4);
   });
 });
