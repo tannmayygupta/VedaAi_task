@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardList, CircleHelp, Bell, Sparkles, ChevronDown } from "lucide-react";
+import { ArrowLeft, ClipboardList, CircleHelp, Bell, Sparkles, ChevronDown, UserRound } from "lucide-react";
 
 export function TopBar({ breadcrumb = "Exams", userName = "Madhur Rastogi" }: { breadcrumb?: string; userName?: string }) {
   return (
@@ -26,9 +26,10 @@ export function TopBar({ breadcrumb = "Exams", userName = "Madhur Rastogi" }: { 
       <button
         type="button"
         aria-label="Notifications"
-        className="flex size-9 items-center justify-center rounded-full bg-surface-off-white"
+        className="relative flex size-9 items-center justify-center rounded-full bg-surface-off-white"
       >
         <Bell className="size-5 text-ink-primary" />
+        <span className="absolute right-2 top-2 size-1.5 rounded-full bg-danger" />
       </button>
       <button
         type="button"
@@ -39,7 +40,9 @@ export function TopBar({ breadcrumb = "Exams", userName = "Madhur Rastogi" }: { 
       </button>
 
       <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
-        <div className="size-8 rounded-full bg-surface-off-white" />
+        <div className="flex size-8 items-center justify-center rounded-full bg-surface-off-white">
+          <UserRound className="size-5 text-ink-secondary" />
+        </div>
         <div className="flex items-center gap-1">
           <span className="text-base font-semibold text-ink-primary">{userName}</span>
           <ChevronDown className="size-4 text-ink-secondary" />

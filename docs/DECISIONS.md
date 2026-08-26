@@ -777,3 +777,51 @@ was updated directly, never printed to chat. Worth remembering for future sessio
 "quota is not a constraint" assumption holds for a properly-provisioned key, not the specific
 free-tier key that happened to be configured — if verification calls start returning 502 with
 `RESOURCE_EXHAUSTED` again, check the daily quota before assuming a code regression.
+
+## [2026-08-26] UI fidelity gap found and closed: missing avatar/icon slots on the shared shell
+
+**Decision:** Re-pulled the actual Figma file directly (the user's earlier-shared file had been
+view-only; access issue resolved by the user duplicating it to their own drafts) and did a
+node-by-node comparison of the Upload screen against our implementation, prompted by the user
+spotting the top-right profile icon and the center illustration were missing. Found and fixed four
+gaps in the shared shell/upload screen, all previously-empty placeholder `div`s or missing
+elements: (1) `TopBar.tsx`'s user avatar slot (`size-8` circle, existed but rendered empty) now
+shows a `UserRound` icon; (2) `Sidebar.tsx`'s school-logo slot (`size-[59px]` circle, same pattern)
+now shows a `GraduationCap` icon; (3) a small header toggle icon next to the "VedaAI" wordmark
+(Figma node `I1:8825;23267:66343`, 20×20) was missing entirely — added as a static `PanelLeft`
+icon button, visual-only, not wired to real sidebar-collapse behavior since that wasn't part of
+this screen's original scope; (4) the center decorative illustration on the Upload screen (Figma
+`Frame 1618872259`) was missing entirely — added as a new `UploadHeroIllustration` component
+(concentric rings + 4 orbiting icon badges: task, cloud-lightning, clock, settings). Also added
+the small red notification dot on the header bell icon, visible in Figma but absent from
+`TopBar.tsx`.
+
+**Why:** Figma's two avatar slots (`Frame 1618872412` in the header, the school-logo circle in
+the sidebar) both contain real photos/images in the design — a person's profile photo and a school
+crest respectively — but this app has no auth and no database, so there is no real photo to show
+for either. Rather than leave the slots empty (as they were) or invent fake photo assets, use
+icons: consistent with how the rest of the app already represents entities without real images
+(e.g. the nav's own icon-based item list), and avoids depending on placeholder image assets that
+would need to be sourced, licensed, or generated for no functional reason. Same reasoning for the
+center illustration's middle icon — Figma's asset there is literally a personal photo the designer
+imported (filename `WhatsApp Image 2024-11-27...`), not meant to represent real app content.
+
+**Alternatives considered:** Leaving the avatar slots empty (previous state) — rejected, since the
+user directly flagged this as a fidelity gap against the Figma spec, and CLAUDE.md's standing rule
+is to closely follow the Figma design. Sourcing or generating real placeholder photos to match
+Figma pixel-for-pixel — rejected as unnecessary effort for a no-auth demo app with no real user
+identity to depict; an icon communicates "this is a person / this is a school" just as clearly
+without implying a specific fake identity.
+
+**Trade-offs / risks:** The icon-based avatars and the illustration are a reasonable-fidelity
+approximation, not a pixel-exact reproduction of Figma's photo assets and exact badge
+positioning/sizing (Figma's badge icons are tiny — 12.8px bounding boxes — noticeably smaller than
+the `size-7` chips used here; a slightly larger size was chosen for visibility/tap-target
+reasonableness rather than exact-match sizing). The sidebar toggle icon is static/decorative only;
+if a later screen expects it to actually collapse the sidebar, that would be new functional scope,
+not a fidelity fix. Verified visually in a real browser against the Figma screenshots (both
+`Upload Screen - Empty State` and `Upload Screen - filled state` nodes) — layout, spacing, and
+icon placement are a close match; exact colors/sizes for the illustration rings were approximated
+using existing design tokens (`--color-danger-tint`, `--color-brand-orange`) rather than pulling
+exact hex values from Figma, since further Figma MCP calls hit the Starter plan's rate limit
+mid-session.

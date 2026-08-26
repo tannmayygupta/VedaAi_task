@@ -89,6 +89,21 @@ visually matches Figma after one fix.
 assets" (see `docs/DECISIONS.md`); Next.js/Tailwind version correction (not a new decision, a
 factual fix to the existing tech-stack entry).
 
+**Post-sign-off follow-up (2026-08-26):** a more thorough Figma comparison (prompted by the user,
+once file-access to the actual Figma file was resolved) found four additional fidelity gaps the
+original visual check missed: the header profile-avatar slot and the sidebar school-logo slot both
+existed as empty placeholder `div`s instead of showing anything; the sidebar header's small toggle
+icon next to "VedaAI" was missing entirely; and the header bell icon's notification dot was
+missing. All fixed — see the corresponding `docs/DECISIONS.md` entry for the icons-not-photos
+reasoning and verification. Test results:
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass |
+| `npm run test` | Pass (278/278, 56 files) |
+| Visual check vs Figma `1:8773`/`1:8826` (Upload Screen, both states) | Pass — profile/school icons, sidebar toggle icon, notification dot, and center hero illustration all now present and closely matching layout/spacing |
+
 **Review sign-off:** [ ] User approved — date: ____
 
 ---

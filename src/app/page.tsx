@@ -6,6 +6,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { UploadSlotCard } from "@/components/upload/UploadSlotCard";
 import { StartMappingButton } from "@/components/upload/StartMappingButton";
 import { LoadingScreen } from "@/components/upload/LoadingScreen";
+import { UploadHeroIllustration } from "@/components/upload/UploadHeroIllustration";
 import { useUploadFlow } from "@/lib/upload/useUploadFlow";
 import { uploadFileToBlob } from "@/lib/upload/uploadFileToBlob";
 import { mergeFilesToPdf } from "@/lib/upload/mergeFilesToPdf";
@@ -66,6 +67,8 @@ export default function Home() {
             </div>
             <p className="text-xl text-ink-primary">Upload both files to get started</p>
           </div>
+
+          <UploadHeroIllustration />
 
           <div className="flex w-[789px] flex-col items-center rounded-2xl bg-surface-white/50 p-3">
             <div className="flex h-[205px] w-full flex-1 gap-4">

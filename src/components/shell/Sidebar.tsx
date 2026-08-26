@@ -1,5 +1,14 @@
 import type { ComponentType } from "react";
-import { LayoutGrid, GraduationCap, FileText, ClipboardList, Library, Settings, Sparkles } from "lucide-react";
+import {
+  LayoutGrid,
+  GraduationCap,
+  FileText,
+  ClipboardList,
+  Library,
+  Settings,
+  Sparkles,
+  PanelLeft,
+} from "lucide-react";
 
 type NavItem = { label: string; icon: ComponentType<{ className?: string }>; active?: boolean };
 
@@ -24,6 +33,9 @@ export function Sidebar() {
               VedaAI
             </span>
           </div>
+          <button type="button" aria-label="Toggle sidebar" className="flex size-5 items-center justify-center">
+            <PanelLeft className="size-5 text-ink-secondary/80" />
+          </button>
         </div>
 
         <div className="flex w-[251px] items-center justify-center">
@@ -61,7 +73,9 @@ export function Sidebar() {
         </div>
         <div className="flex w-[256px] flex-col items-start rounded-lg bg-surface-off-white-20 p-3">
           <div className="flex w-full items-center gap-2">
-            <div className="size-[59px] shrink-0 rounded-full bg-surface-off-white" />
+            <div className="flex size-[59px] shrink-0 items-center justify-center rounded-full bg-surface-off-white">
+              <GraduationCap className="size-7 text-ink-secondary" />
+            </div>
             <div className="flex flex-1 flex-col items-start">
               <p className="w-full text-base font-bold text-ink-primary">Delhi Public School</p>
               <p className="w-full text-sm text-ink-secondary">Bokaro Steel City</p>

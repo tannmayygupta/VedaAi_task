@@ -10,6 +10,11 @@ describe("Sidebar", () => {
     expect(screen.getByText("Exams")).toBeInTheDocument();
     expect(screen.getByText("Home")).toBeInTheDocument();
   });
+
+  it("renders the sidebar toggle button", () => {
+    render(<Sidebar />);
+    expect(screen.getByRole("button", { name: /toggle sidebar/i })).toBeInTheDocument();
+  });
 });
 
 describe("TopBar", () => {
@@ -23,5 +28,12 @@ describe("TopBar", () => {
     render(<TopBar breadcrumb="Assignments" userName="Jane Doe" />);
     expect(screen.getByText("Assignments")).toBeInTheDocument();
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+  });
+
+  it("renders the notifications button with an unread indicator", () => {
+    const { container } = render(<TopBar />);
+    const notificationsButton = screen.getByRole("button", { name: /notifications/i });
+    expect(notificationsButton).toBeInTheDocument();
+    expect(container.querySelector(".bg-danger")).toBeInTheDocument();
   });
 });
