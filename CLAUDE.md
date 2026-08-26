@@ -61,6 +61,14 @@ requires ALL of:
 No CI is set up for this project (explicit decision) — the tracker's phase-gate checklist is the
 enforcement mechanism instead of an automated pipeline.
 
+**Sub-agents never commit.** Only the coordinating assistant runs `git commit` (after its own
+verification pass and, per the phase gate above, only once a phase is ready to present). A
+parallel sub-agent's job ends at reporting its file(s) and self-verification results back —
+never staging, committing, or editing `docs/TRACKER.md`/`docs/DECISIONS.md` itself. (Added after
+a sub-agent scoped to one small file autonomously synthesized, wired, and committed an entire
+phase's work without a review checkpoint — the resulting work happened to hold up under
+independent verification, but the process itself is not to be repeated.)
+
 ## Working notes
 
 - Tech stack: Next.js (App Router, currently v16) + TypeScript + Tailwind CSS, deployed on Vercel. File
