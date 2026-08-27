@@ -58,10 +58,19 @@ function loadImageElement(url: string): Promise<HTMLImageElement> {
  * pixel space instead of CSS percentages — and the same pdfjs-dist rendering
  * approach as PdfPageCanvas.tsx, rendered off-screen since the teacher never
  * needs to see this intermediate step.
+ *
+ * Accepts an optional AbortSignal: React's Strict Mode double-invokes effects
+ * in dev (mount -> cleanup -> mount), and without cancellation this function's
+ * own render task from the first, discarded invocation keeps running
+ * concurrently with the second — real-document testing showed this reliably
+ * deadlocks pdfjs-dist's page.render() (the promise never settles, no error).
+ * PdfPageCanvas.tsx already avoids this by cancelling its render task on
+ * cleanup; this mirrors that same fix.
  */
 export async function cropAnswerRegions(
   blobUrls: string[],
   regions: AnswerRegion[],
+  signal?: AbortSignal,
 ): Promise<RegionCrop[]> {
   const url = blobUrls[0];
   if (!url || regions.length === 0) return [];
@@ -73,12 +82,21 @@ export async function cropAnswerRegions(
     const { getPdfDocument } = await import("@/lib/pdf/pdfjs");
     const pdf = await getPdfDocument(url);
     for (const [pageIndex, pageRegions] of regionsByPage) {
+      if (signal?.aborted) return crops;
       const page = await pdf.getPage(pageIndex + 1); // pdfjs pages are 1-indexed
       const viewport = page.getViewport({ scale: CROP_RENDER_SCALE });
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      await page.render({ canvas, viewport }).promise;
+      const renderTask = page.render({ canvas, viewport });
+      const onAbort = () => renderTask.cancel();
+      signal?.addEventListener("abort", onAbort, { once: true });
+      try {
+        await renderTask.promise;
+      } finally {
+        signal?.removeEventListener("abort", onAbort);
+      }
+      if (signal?.aborted) return crops;
       for (const region of pageRegions) {
         crops.push({
           regionId: region.id,
@@ -88,6 +106,7 @@ export async function cropAnswerRegions(
     }
   } else {
     for (const [pageIndex, pageRegions] of regionsByPage) {
+      if (signal?.aborted) return crops;
       const pageSource = resolveAnswerSheetPageSource(blobUrls, pageIndex);
       if (!pageSource) continue;
       const img = await loadImageElement(pageSource.url);

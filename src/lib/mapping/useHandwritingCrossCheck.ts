@@ -45,11 +45,13 @@ export function useHandwritingCrossCheck(
     }
 
     let cancelled = false;
+    const controller = new AbortController();
 
     async function run() {
       setState({ status: "checking" });
       try {
-        const crops = await cropAnswerRegions(blobUrls, regions);
+        const crops = await cropAnswerRegions(blobUrls, regions, controller.signal);
+        if (cancelled) return;
         if (crops.length === 0) {
           if (!cancelled) setState({ status: "done", mismatchedRegionIds: new Set() });
           return;
@@ -100,6 +102,7 @@ export function useHandwritingCrossCheck(
     run();
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on content (blobUrlsKey/regionsKey) instead of blobUrls/regions references, see comment above
   }, [blobUrlsKey, regionsKey]);
