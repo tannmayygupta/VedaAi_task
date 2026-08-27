@@ -98,9 +98,9 @@ export function QuestionCard({
       </div>
 
       {isExpanded && feedback && (
-        <div className="flex w-full flex-col gap-2 rounded-lg bg-surface-off-white px-6 py-4">
+        <div className="flex w-full flex-col gap-[10px] rounded-lg bg-surface-off-white px-4 py-6">
           <p className="font-bold text-ink-primary">AI Feedback</p>
-          <p className="text-sm text-ink-primary">{feedback}</p>
+          <p className="text-sm tracking-[-0.04em] text-ink-primary">{feedback}</p>
         </div>
       )}
     </div>

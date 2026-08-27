@@ -21,11 +21,12 @@ export function LoadingScreen({ message = "Extracting…" }: LoadingScreenProps)
         alt=""
         width={129}
         height={135}
-        className="size-20"
         priority
       />
-      <p className="text-center text-[30px] font-bold text-ink-primary">{message}</p>
-      <p className="text-xl text-ink-secondary">This may take a while</p>
+      <p className="text-center text-[30px] font-bold leading-9 tracking-[-1.2px] text-ink-primary">
+        {message}
+      </p>
+      <p className="text-xl leading-9 tracking-[-1.2px] text-[#464646]/75">This may take a while</p>
     </div>
   );
 }

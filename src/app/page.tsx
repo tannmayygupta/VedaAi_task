@@ -60,10 +60,10 @@ export default function Home() {
         <div className="flex flex-col items-center gap-5 px-4">
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-3">
-              <h1 className="text-[28px] font-bold tracking-[-0.04em] text-[#2b2b2b] lg:text-[40px]">
+              <h1 className="text-[28px] font-bold tracking-[-0.04em] text-ink-primary lg:text-[40px]">
                 Upload
               </h1>
-              <h1 className="rounded-sm bg-[rgba(255,147,80,0.15)] px-2 py-1 text-[28px] font-bold tracking-[-0.04em] text-brand-orange lg:text-[40px]">
+              <h1 className="text-[28px] font-bold tracking-[-0.04em] text-ink-primary lg:rounded-sm lg:bg-[rgba(255,147,80,0.15)] lg:px-2 lg:py-1 lg:text-[40px] lg:text-brand-orange">
                 Question Paper &amp; Answer Sheets
               </h1>
             </div>

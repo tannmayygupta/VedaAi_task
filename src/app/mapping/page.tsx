@@ -97,7 +97,7 @@ function MappingScreen({
   return (
     <AppShell>
       <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
-        <div className="flex w-full items-center gap-1 rounded-full bg-surface-white p-1 shadow-realistic lg:hidden">
+        <div className="flex w-full items-center rounded-full bg-surface-white p-1 shadow-realistic lg:hidden">
           <button
             type="button"
             onClick={() => setMobileTab("questions")}

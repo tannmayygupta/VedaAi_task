@@ -13,7 +13,7 @@ export function StartMappingButton({ enabled, onClick }: StartMappingButtonProps
       type="button"
       disabled={!enabled}
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-pill border-2 border-white/15 bg-surface-dark-grey py-3 pl-6 pr-5 text-sm font-medium text-ink-inverse ${
+      className={`flex items-center gap-2 rounded-pill border-2 border-white/15 bg-ink-primary pt-6 pr-3 pb-5 pl-3 text-sm font-medium text-ink-inverse ${
         enabled ? "shadow-realistic" : "cursor-not-allowed opacity-25"
       }`}
     >
