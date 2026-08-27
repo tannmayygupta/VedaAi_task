@@ -4,7 +4,7 @@ VedaAI hiring assignment. Upload a question paper and a student's handwritten an
 the app extracts questions and answers, maps them together, highlights the exact answer region
 per question, and grades with AI feedback.
 
-**Live demo:** _(add the deployed Vercel URL here once live)_
+**Live demo:** https://vedaai-task.vercel.app/
 
 Approach & AI model used: [`APPROACH.md`](APPROACH.md) — the submission writeup, covering the
 pipeline, key decisions, and assumptions/limitations in plain language.

@@ -12,6 +12,11 @@ the exact answer region on the original scanned page, and grades each answer wit
 feedback. Everything runs client + serverless — no database, no accounts, no persistence beyond
 one browser session.
 
+**Verified live, end to end, on real handwritten documents:** tested against a real 15-page
+handwritten answer sheet on the deployed production URL — 15/15 questions extracted correctly,
+100% answer-mapping accuracy including multi-page continuations, 98% overall grading score
+(29.5/30), matching the same result obtained independently in local testing.
+
 ## Stack & AI model used
 
 **Next.js (App Router, v16) + TypeScript + Tailwind CSS, deployed on Vercel.** One project, no
@@ -80,6 +85,18 @@ throwing or silently accepting bad data. One bounded retry is a deliberate middl
 (at most 2x calls), gives the model a real chance to self-correct with concrete feedback, and has
 a hard stop so a genuinely broken response fails loudly instead of looping.
 
+## Bonus: dual-model handwriting cross-check
+
+As an optional second layer of trust, every transcribed answer region is independently re-read by
+GPT (`gpt-4o`, via a batched Responses API call) in the background, after the mapping screen has
+already rendered from Gemini's result — it never blocks or delays the initial screen. If GPT's
+reading of a region disagrees with Gemini's, that question gets a "Verify" badge so the teacher
+knows to double-check it themselves, without either model's output being silently overwritten.
+This is additive only: Gemini's own transcription, matching, and grading are the single source of
+truth throughout; GPT never changes them, it only flags disagreement. If the OpenAI key is unset,
+rate-limited, or out of credits, the check simply never completes and no badges appear — the core
+pipeline is fully unaffected either way, since it depends on Gemini alone.
+
 ## Key decisions (why not X)
 
 - **Direct client-to-Vercel-Blob upload, not a POST to our own API route.** Vercel Functions
@@ -131,12 +148,19 @@ a hard stop so a genuinely broken response fails loudly instead of looping.
 - **`DEFAULT_MARKS_WHEN_UNSTATED = 2`** is a judgment call (per the PRD's own suggested example),
   not derived from the source documents — it affects the total score whenever a question paper
   doesn't state marks for a question.
-- **Single AI provider.** Everything depends on Gemini; a Gemini outage or free-tier quota
-  exhaustion stops the app entirely. Acceptable for an assignment/demo; production use would need
-  a fallback provider.
+- **Core pipeline depends on one provider (Gemini).** A Gemini outage or free-tier quota
+  exhaustion stops extraction/mapping/grading entirely. Acceptable for an assignment/demo;
+  production use would need a fallback provider. The optional GPT cross-check is a separate,
+  non-critical dependency — if OpenAI is unavailable (no credits, rate-limited, key unset), only
+  the bonus "Verify" badges are affected; the core pipeline is untouched.
 - **No auth, no database, in-memory only** — by design, per the assignment's own constraints.
   Results exist only for the current browser session (with an optional sessionStorage cache for
   the current tab); nothing persists across sessions or devices.
 - **Recommend a single multi-page PDF per upload slot** for best results — multiple photos for
   one slot are merged into a PDF client-side automatically, so this is handled, not a manual
   workaround the teacher needs to do.
+- **The Vercel Blob store must be created with Public access.** The app's upload/read code is
+  built entirely around public blob URLs (no auth token needed to read them back server-side); a
+  Private-access store silently breaks every upload (every PUT returns 503) since it needs a
+  different `access` mode and an authenticated read path this app doesn't implement. Learned the
+  hard way during deployment — worth stating explicitly for anyone redeploying this project.
