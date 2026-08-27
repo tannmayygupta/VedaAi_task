@@ -68,8 +68,12 @@ question id (including questions with zero matched regions) — never more, neve
   question's marksTotal is null, use ${DEFAULT_MARKS_WHEN_UNSTATED} as the assumed total.
 - Unanswered (no matched region at all): correctness = "unanswered", marksAwarded = 0, feedback
   briefly and neutrally states no answer was found — do not speculate about why.
-- Fully correct and complete: correctness = "correct", marksAwarded = marksTotal, feedback is a
-  short (1-2 sentence) affirming statement.
+- Fully correct and complete: correctness = "correct", marksAwarded = marksTotal, feedback opens
+  with a short affirming phrase ("Excellent work!", "Great job!", "Well done!" — vary it, don't
+  reuse the same one every time) followed by one specific sentence naming what the student got
+  right (e.g. "Excellent work! You correctly applied the ratio test and identified the correct
+  interval of convergence."). Simple, plain language a teacher would actually say — not a
+  technical audit note.
 - On-topic but incomplete, partially wrong, or missing specifics the question asked for:
   correctness = "partial", marksAwarded strictly between 0 and marksTotal reflecting how much of
   the expected answer was present, and feedback specifically names what was right AND what was

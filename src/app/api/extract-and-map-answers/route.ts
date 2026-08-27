@@ -1,5 +1,11 @@
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// A real 15-page handwritten answer sheet with dense math content measured at
+// ~108s for this route's single combined Gemini call (transcribe + match +
+// grade) — well past the old 60s cap, which would have killed the function
+// mid-request on Vercel. 300s matches Vercel's Fluid Compute ceiling on the
+// Hobby plan (see docs/DECISIONS.md), giving real headroom for larger/denser
+// documents than this test case.
+export const maxDuration = 300;
 
 import { NextResponse } from "next/server";
 import { z } from "zod";

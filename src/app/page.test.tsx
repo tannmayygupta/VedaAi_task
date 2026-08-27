@@ -58,37 +58,13 @@ describe("Home (upload screen)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /start mapping/i }));
 
-    expect(screen.getByText(/uploading…/i)).toBeInTheDocument();
+    expect(screen.getByText(/extracting…/i)).toBeInTheDocument();
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
     const [pushedUrl] = pushMock.mock.calls[0];
     expect(pushedUrl).toContain("/mapping?");
     expect(pushedUrl).toContain("qp.pdf");
     expect(pushedUrl).toContain("as.pdf");
-  });
-
-  it("shows real upload progress (averaged across both slots) while uploading", async () => {
-    const { uploadFileToBlob } = await import("@/lib/upload/uploadFileToBlob");
-    vi.mocked(uploadFileToBlob).mockImplementation(async (file, onProgress) => {
-      onProgress?.(file.name === "qp.pdf" ? 100 : 50);
-      return new Promise(() => {}); // never resolves — hold on the loading screen to inspect it
-    });
-
-    render(<Home />);
-    const inputs = document.querySelectorAll('input[type="file"]');
-    await userEvent.upload(inputs[0] as HTMLInputElement, makeFile("qp.pdf", "application/pdf"));
-    await userEvent.upload(inputs[1] as HTMLInputElement, makeFile("as.pdf", "application/pdf"));
-    await userEvent.click(screen.getByRole("button", { name: /start mapping/i }));
-
-    // (100 + 50) / 2 = 75
-    expect(await screen.findByText("Uploading… 75%")).toBeInTheDocument();
-
-    // Restore the default (resolving) mock so later tests in this file aren't
-    // left hanging on the never-resolving implementation set above.
-    vi.mocked(uploadFileToBlob).mockImplementation(async (file: File) => ({
-      url: `https://blob.example/${file.name}`,
-      pathname: file.name,
-    }));
   });
 
   it("merges multiple selected files for a slot into one PDF before uploading, then navigates with a single URL per slot", async () => {

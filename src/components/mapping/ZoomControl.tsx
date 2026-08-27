@@ -27,7 +27,7 @@ export function ZoomControl({
         aria-label="Zoom out"
         disabled={!canZoomOut}
         onClick={onZoomOut}
-        className={`text-white ${!canZoomOut ? "cursor-not-allowed opacity-40" : ""}`}
+        className={`text-white ${!canZoomOut ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
       >
         <Minus className="size-4" />
       </button>
@@ -37,7 +37,7 @@ export function ZoomControl({
         aria-label="Zoom in"
         disabled={!canZoomIn}
         onClick={onZoomIn}
-        className={`text-white ${!canZoomIn ? "cursor-not-allowed opacity-40" : ""}`}
+        className={`text-white ${!canZoomIn ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
       >
         <Plus className="size-4" />
       </button>

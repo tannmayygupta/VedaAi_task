@@ -96,7 +96,7 @@ function MappingScreen({
 
   return (
     <AppShell>
-      <div className="flex h-full flex-col gap-3 lg:flex-row">
+      <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
         <div className="flex w-full items-center gap-1 rounded-full bg-surface-white p-1 shadow-realistic lg:hidden">
           <button
             type="button"
@@ -123,7 +123,7 @@ function MappingScreen({
         </div>
 
         <div
-          className={`w-full flex-col gap-4 overflow-y-auto rounded-xl bg-surface-white/50 p-4 lg:flex lg:w-[672px] lg:shrink-0 ${
+          className={`w-full min-h-0 flex-col gap-4 overflow-y-auto rounded-xl bg-surface-white/50 p-4 lg:flex lg:w-[672px] lg:shrink-0 ${
             mobileTab === "questions" ? "flex" : "hidden"
           }`}
         >
@@ -142,7 +142,7 @@ function MappingScreen({
           />
         </div>
         <div
-          className={`flex-1 flex-col lg:flex ${mobileTab === "answerSheet" ? "flex" : "hidden"}`}
+          className={`min-h-0 flex-1 flex-col lg:flex ${mobileTab === "answerSheet" ? "flex" : "hidden"}`}
         >
           {selection.hasNoAnswer ? (
             <NoAnswerFoundState

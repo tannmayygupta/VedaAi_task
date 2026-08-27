@@ -1,5 +1,7 @@
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// See extract-and-map-answers/route.ts — a 15-page answer sheet can produce
+// 20-25+ regions, all batched into one GPT call; same headroom applies.
+export const maxDuration = 300;
 
 import { NextResponse } from "next/server";
 import { z } from "zod";

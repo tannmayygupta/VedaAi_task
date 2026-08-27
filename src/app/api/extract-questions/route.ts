@@ -1,5 +1,8 @@
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// See extract-and-map-answers/route.ts for why this isn't 60 anymore — a
+// dense multi-page question paper could plausibly take proportionally
+// longer than the ~28s measured for a single dense page.
+export const maxDuration = 300;
 
 import { NextResponse } from "next/server";
 import { z } from "zod";

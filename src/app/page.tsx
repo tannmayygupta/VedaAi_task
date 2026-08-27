@@ -20,11 +20,9 @@ export default function Home() {
   const { slots, canStartMapping, selectFiles, removeFiles } = useUploadFlow();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState({ questionPaper: 0, answerSheet: 0 });
 
   async function handleStartMapping() {
     setUploadError(null);
-    setUploadProgress({ questionPaper: 0, answerSheet: 0 });
     setIsUploading(true);
     try {
       const [questionPaperFile, answerSheetFile] = await Promise.all([
@@ -32,12 +30,8 @@ export default function Home() {
         prepareSlotFileForUpload(slots.answerSheet.files),
       ]);
       const [questionPaperBlob, answerSheetBlob] = await Promise.all([
-        uploadFileToBlob(questionPaperFile, (percentage) =>
-          setUploadProgress((prev) => ({ ...prev, questionPaper: percentage })),
-        ),
-        uploadFileToBlob(answerSheetFile, (percentage) =>
-          setUploadProgress((prev) => ({ ...prev, answerSheet: percentage })),
-        ),
+        uploadFileToBlob(questionPaperFile),
+        uploadFileToBlob(answerSheetFile),
       ]);
       const params = new URLSearchParams({
         questionPaper: questionPaperBlob.url,
@@ -53,12 +47,9 @@ export default function Home() {
   }
 
   if (isUploading) {
-    const combinedProgress = Math.round(
-      (uploadProgress.questionPaper + uploadProgress.answerSheet) / 2,
-    );
     return (
       <AppShell>
-        <LoadingScreen message="Uploading…" progressPercent={combinedProgress} />
+        <LoadingScreen />
       </AppShell>
     );
   }

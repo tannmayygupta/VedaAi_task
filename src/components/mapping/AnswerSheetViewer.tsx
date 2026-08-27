@@ -49,7 +49,7 @@ export function AnswerSheetViewer({
   const regionsOnThisPage = highlightRegions.filter((r) => r.pageIndex === currentPageIndex);
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden rounded-xl border-[1.25px] border-black/10 bg-surface-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-[1.25px] border-black/10 bg-surface-white">
       <div className="flex h-16 shrink-0 items-center justify-between border-b-[1.25px] border-black/10 bg-surface-dark-grey px-6 py-3">
         <p className="font-bold text-white/80">Answer Sheet</p>
         <div className="flex items-center gap-3">
@@ -67,7 +67,7 @@ export function AnswerSheetViewer({
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center overflow-auto p-4">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
         {isPdf && pdfDocument.status === "loading" && (
           <p className="text-sm text-ink-secondary">Loading answer sheet…</p>
         )}
@@ -77,12 +77,15 @@ export function AnswerSheetViewer({
           </p>
         )}
         {isPdf && pdfDocument.status === "ready" && (
-          <div className="relative" style={{ width: `${zoomPercent}%`, maxWidth: "100%" }}>
+          <div
+            className="relative flex max-h-full max-w-full shrink-0"
+            style={{ transform: `scale(${zoomPercent / 100})` }}
+          >
             <PdfPageCanvas
               getPage={pdfDocument.getPage}
               pageNumber={currentPageIndex + 1}
               scale={PDF_RENDER_SCALE}
-              className="w-full rounded-lg"
+              className="max-h-full max-w-full rounded-lg"
             />
             {regionsOnThisPage.map((region) => (
               <AnswerHighlight
@@ -94,12 +97,15 @@ export function AnswerSheetViewer({
           </div>
         )}
         {!isPdf && pageSource?.kind === "image" && (
-          <div className="relative" style={{ width: `${zoomPercent}%`, maxWidth: "100%" }}>
+          <div
+            className="relative flex max-h-full max-w-full shrink-0"
+            style={{ transform: `scale(${zoomPercent / 100})` }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element -- externally-hosted Blob URL, next/image is unnecessary here */}
             <img
               src={pageSource.url}
               alt={`Answer sheet page ${currentPageIndex + 1}`}
-              className="w-full rounded-lg"
+              className="max-h-full max-w-full rounded-lg object-contain"
             />
             {regionsOnThisPage.map((region) => (
               <AnswerHighlight
