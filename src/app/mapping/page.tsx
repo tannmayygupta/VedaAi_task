@@ -123,7 +123,7 @@ function MappingScreen({
         </div>
 
         <div
-          className={`w-full min-h-0 flex-col gap-4 overflow-y-auto rounded-xl bg-surface-white/50 p-4 lg:flex lg:w-[672px] lg:shrink-0 ${
+          className={`w-full min-h-0 flex-col gap-4 overflow-y-auto rounded-xl bg-surface-white/50 p-4 lg:flex lg:w-2/5 lg:min-w-[320px] lg:max-w-[672px] lg:shrink-0 ${
             mobileTab === "questions" ? "flex" : "hidden"
           }`}
         >
@@ -142,7 +142,7 @@ function MappingScreen({
           />
         </div>
         <div
-          className={`min-h-0 flex-1 flex-col lg:flex ${mobileTab === "answerSheet" ? "flex" : "hidden"}`}
+          className={`min-h-0 min-w-0 flex-1 flex-col lg:flex ${mobileTab === "answerSheet" ? "flex" : "hidden"}`}
         >
           {selection.hasNoAnswer ? (
             <NoAnswerFoundState

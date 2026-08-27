@@ -10,11 +10,11 @@ export type TooltipProps = {
 /** Simple hover tooltip (CSS-only, no positioning library needed for this scale). */
 export function Tooltip({ label, children }: TooltipProps) {
   return (
-    <span className="group relative inline-flex">
+    <span className="group relative inline-flex focus-within:z-10">
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-56 -translate-x-1/2 rounded-md bg-surface-dark-grey px-3 py-2 text-xs font-normal text-white opacity-0 shadow-realistic transition-opacity group-hover:opacity-100"
+        className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-56 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-md bg-surface-dark-grey px-3 py-2 text-xs font-normal text-white opacity-0 shadow-realistic transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
       >
         {label}
       </span>

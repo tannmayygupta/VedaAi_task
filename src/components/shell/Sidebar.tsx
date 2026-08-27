@@ -13,7 +13,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   return (
-    <aside className="flex h-[763px] w-[304px] shrink-0 flex-col items-center justify-between rounded-lg bg-surface-white p-6 shadow-realistic">
+    <aside className="flex h-full w-[304px] shrink-0 flex-col items-center justify-between overflow-y-auto rounded-lg bg-surface-white p-6 shadow-realistic">
       <div className="flex flex-col items-center gap-14">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-2">
@@ -50,7 +50,7 @@ export function Sidebar() {
           {NAV_ITEMS.map(({ label, iconSrc, active }) => (
             <div
               key={label}
-              className={`flex w-[254px] items-center gap-2 rounded-sm px-3 py-2 ${
+              className={`flex w-full items-center gap-2 rounded-sm px-3 py-2 ${
                 active ? "bg-surface-off-white-20" : ""
               }`}
             >

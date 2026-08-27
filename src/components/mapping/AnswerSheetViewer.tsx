@@ -50,9 +50,9 @@ export function AnswerSheetViewer({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-[1.25px] border-black/10 bg-surface-white">
-      <div className="flex h-16 shrink-0 items-center justify-between border-b-[1.25px] border-black/10 bg-surface-dark-grey px-6 py-3">
-        <p className="font-bold text-white/80">Answer Sheet</p>
-        <div className="flex items-center gap-3">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b-[1.25px] border-black/10 bg-surface-dark-grey px-3 py-3 sm:px-6">
+        <p className="hidden font-bold text-white/80 sm:block">Answer Sheet</p>
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <ZoomControl
             zoomPercent={zoomPercent}
             onZoomOut={() => setZoomPercent((z) => Math.max(50, z - 10))}

@@ -62,7 +62,7 @@ export function UploadSlotCard({
   }, [slotState.files]);
 
   return (
-    <div className="flex h-full flex-1 flex-col gap-2">
+    <div className="flex h-full min-w-0 flex-1 flex-col gap-2">
       {slotState.files.length > 0 ? (
         <FileChip
           fileName={

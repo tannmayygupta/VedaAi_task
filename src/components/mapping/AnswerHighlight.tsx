@@ -20,7 +20,7 @@ export function AnswerHighlight({ boundingBox, label }: AnswerHighlightProps) {
         height: percent.height,
       }}
     >
-      <span className="absolute -top-7 left-3 whitespace-nowrap rounded-t-md bg-success px-3 py-1 text-sm font-bold text-white">
+      <span className="absolute left-1 top-1 whitespace-nowrap rounded-md bg-success px-3 py-1 text-sm font-bold text-white">
         {label}
       </span>
     </div>

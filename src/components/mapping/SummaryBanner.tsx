@@ -17,14 +17,14 @@ export function SummaryBanner({
   onExportJson,
 }: SummaryBannerProps) {
   return (
-    <div className="flex w-full items-center justify-between">
-      <div className="flex flex-col gap-1">
+    <div className="flex w-full flex-wrap items-center justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-1">
         <p className="text-base font-bold text-ink-primary">
           Extracted Questions (from question paper)
         </p>
         <p className="text-sm text-ink-secondary">{formatMappingSummary(summary)}</p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={onExportJson}
