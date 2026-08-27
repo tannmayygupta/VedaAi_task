@@ -9,7 +9,9 @@ export type LoadingScreenProps = {
  * mobile counterpart): a static icon (no glow/pulse — Figma defines no
  * Effects on it) and a fixed "This may take a while" subtext, no percentage.
  * Used for both the upload-to-Blob phase and the AI-extraction phase — Figma
- * defines only one generic loading state, not a distinct per-phase one.
+ * defines only one generic loading state visually; callers pass a distinct
+ * `message` per phase ("Uploading…" vs "Extracting…") so a stuck upload and
+ * a stuck extraction aren't indistinguishable to the person watching it.
  */
 export function LoadingScreen({ message = "Extracting…" }: LoadingScreenProps) {
   return (

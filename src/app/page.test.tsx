@@ -58,7 +58,7 @@ describe("Home (upload screen)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /start mapping/i }));
 
-    expect(screen.getByText(/extracting…/i)).toBeInTheDocument();
+    expect(screen.getByText(/uploading…/i)).toBeInTheDocument();
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
     const [pushedUrl] = pushMock.mock.calls[0];
