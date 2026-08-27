@@ -14,9 +14,9 @@ export function FileChip({ fileName, fileSizeLabel, pageCount, onRemove }: FileC
 
   return (
     <div className="relative flex h-full flex-1 items-center justify-center overflow-clip rounded-xl border-[1.5px] border-dashed border-[#cecece] bg-surface-white p-2.5">
-      <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface-off-white py-3 pl-3 pr-5">
+      <div className="flex w-full min-w-0 flex-1 items-center gap-3 rounded-md bg-surface-off-white py-3 pl-3 pr-5">
         <FileText className="size-6 shrink-0 text-ink-secondary" aria-hidden="true" />
-        <div className="flex min-w-0 flex-col items-start">
+        <div className="flex min-w-0 flex-1 flex-col items-start">
           <p className="w-full truncate text-base font-bold text-ink-primary">{fileName}</p>
           <p className="w-full truncate text-sm text-ink-secondary/80">
             {fileSizeLabel} &bull; {pageLabel}

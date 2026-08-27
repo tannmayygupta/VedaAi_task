@@ -57,9 +57,9 @@ export default function Home() {
   return (
     <AppShell>
       <div className="flex h-full min-h-[500px] flex-col items-center justify-center gap-6 rounded-[40px] py-8 lg:min-h-[694px] lg:gap-9">
-        <div className="flex flex-col items-center gap-5 px-4">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-3">
+        <div className="flex w-full flex-col items-center gap-5 px-4">
+          <div className="flex w-full flex-col items-center gap-2 text-center">
+            <div className="flex w-full flex-wrap items-center justify-center gap-2 lg:gap-3">
               <h1 className="text-[28px] font-bold tracking-[-0.04em] text-ink-primary lg:text-[40px]">
                 Upload
               </h1>
