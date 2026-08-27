@@ -50,3 +50,12 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Tailwind v4's Preflight dropped v3's default `cursor: pointer` on buttons
+   (see CLAUDE.md's "this is NOT the Next.js you know" note) — restore it
+   app-wide here instead of annotating every <button> individually. */
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
