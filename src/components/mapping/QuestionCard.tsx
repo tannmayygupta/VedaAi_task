@@ -53,48 +53,63 @@ export function QuestionCard({
         isExpanded ? "border-2 border-brand-orange" : ""
       }`}
     >
-      <div className="flex w-full items-center gap-4">
-        <div
-          className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xl font-extrabold text-white ${
-            isExpanded ? "bg-brand-orange" : "border-2 border-white/25 bg-[rgba(43,43,43,0.8)]"
-          }`}
-        >
-          {badgeContent(displayLabel, subpartLetter)}
-        </div>
-
-        {subpartLetter && (
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-off-white font-bold text-ink-primary">
-            {subpartLetter}.
+      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2">
+        {/* min-w-[144px] (badge + gap + the text's own 96px floor), not
+            min-w-0 — with flex-1's flex-basis:0%, the flex-wrap line-fitting
+            algorithm otherwise under-estimates how much this group actually
+            needs and packs the score group onto the same line anyway,
+            letting the text overflow into it instead of wrapping below. */}
+        <div className="flex min-w-[144px] flex-1 items-center gap-4">
+          <div
+            className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xl font-extrabold text-white ${
+              isExpanded ? "bg-brand-orange" : "border-2 border-white/25 bg-[rgba(43,43,43,0.8)]"
+            }`}
+          >
+            {badgeContent(displayLabel, subpartLetter)}
           </div>
-        )}
 
-        <div className="min-w-0 flex-1 break-words text-base text-ink-primary">{questionText}</div>
+          {subpartLetter && (
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-off-white font-bold text-ink-primary">
+              {subpartLetter}.
+            </div>
+          )}
 
-        <div className={`rounded-full px-3 py-1 text-base font-bold ${background} ${text}`}>
-          {scoreLabel}
+          {/* min-w-[96px] (not min-w-0) — a fixed-content sibling like the
+              "Unanswered" score pill has no natural shrink floor, so an
+              unbounded min-w-0 text sibling can be squeezed to near-zero
+              width and wrap character-by-character instead of by word. */}
+          <div className="min-w-[96px] flex-1 break-words text-base text-ink-primary">
+            {questionText}
+          </div>
         </div>
 
-        {needsReview && (
-          <Tooltip label={reviewTooltip}>
-            <span className="flex items-center gap-1 rounded-full bg-warning-tint px-2 py-1 text-xs font-bold text-warning">
-              <TriangleAlert className="size-3.5" aria-hidden="true" />
-              Verify
-            </span>
-          </Tooltip>
-        )}
+        <div className="flex shrink-0 items-center gap-4">
+          <div className={`rounded-full px-3 py-1 text-base font-bold ${background} ${text}`}>
+            {scoreLabel}
+          </div>
 
-        <button
-          type="button"
-          onClick={onToggleExpand}
-          aria-label="Toggle question details"
-          className="rounded-sm bg-surface-off-white p-1"
-        >
-          {isExpanded ? (
-            <ChevronUp className="size-5 text-ink-primary" />
-          ) : (
-            <ChevronDown className="size-5 text-ink-primary" />
+          {needsReview && (
+            <Tooltip label={reviewTooltip}>
+              <span className="flex items-center gap-1 rounded-full bg-warning-tint px-2 py-1 text-xs font-bold text-warning">
+                <TriangleAlert className="size-3.5" aria-hidden="true" />
+                Verify
+              </span>
+            </Tooltip>
           )}
-        </button>
+
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-label="Toggle question details"
+            className="rounded-sm bg-surface-off-white p-1"
+          >
+            {isExpanded ? (
+              <ChevronUp className="size-5 text-ink-primary" />
+            ) : (
+              <ChevronDown className="size-5 text-ink-primary" />
+            )}
+          </button>
+        </div>
       </div>
 
       {isExpanded && feedback && (
