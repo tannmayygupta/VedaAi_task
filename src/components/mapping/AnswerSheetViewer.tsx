@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ZoomControl } from "./ZoomControl";
 import { PageNavigator } from "./PageNavigator";
 import { AnswerHighlight } from "./AnswerHighlight";
@@ -35,6 +35,22 @@ export function AnswerSheetViewer({
   highlightLabel,
 }: AnswerSheetViewerProps) {
   const [zoomPercent, setZoomPercent] = useState(100);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // A flex container with items-center/justify-center defaults an overflowing
+  // child's scroll position to show its CENTER, not its top — if a rendered
+  // page ever ends up taller than the panel (e.g. a percentage max-height
+  // resolving late against an ancestor that wasn't yet definite), the page
+  // appears to have blank space above it and be cut off below, when it's
+  // actually just scrolled to the middle. Force back to the top on every
+  // page/zoom change so that never happens.
+  useEffect(() => {
+    const el = scrollAreaRef.current;
+    if (el) {
+      el.scrollTop = 0;
+      el.scrollLeft = 0;
+    }
+  }, [currentPageIndex, zoomPercent]);
 
   const url = blobUrls[0] ?? null;
   const isPdf = url !== null && PDF_URL_PATTERN.test(url);
@@ -67,7 +83,10 @@ export function AnswerSheetViewer({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
+      <div
+        ref={scrollAreaRef}
+        className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
+      >
         {isPdf && pdfDocument.status === "loading" && (
           <p className="text-sm text-ink-secondary">Loading answer sheet…</p>
         )}
@@ -77,8 +96,19 @@ export function AnswerSheetViewer({
           </p>
         )}
         {isPdf && pdfDocument.status === "ready" && (
+          // h-full (not just max-h-full) + items-center: the canvas's own
+          // max-height:100% can only resolve against a parent with an
+          // explicit height (max-height alone doesn't count, per the CSS
+          // spec's percentage-height rule) — without h-full here the canvas
+          // rendered at its full, unconstrained intrinsic height. And
+          // without an explicit items-center, this row's default
+          // align-items:stretch forces the canvas to fill h-full's height
+          // regardless of aspect ratio, stretching/distorting it instead of
+          // fitting it. Both are needed together (verified: without h-full,
+          // stretch alone still overflows; without items-center, h-full
+          // alone still distorts the image).
           <div
-            className="relative flex max-h-full max-w-full shrink-0"
+            className="relative flex h-full max-h-full max-w-full shrink-0 items-center"
             style={{ transform: `scale(${zoomPercent / 100})` }}
           >
             <PdfPageCanvas
@@ -98,7 +128,7 @@ export function AnswerSheetViewer({
         )}
         {!isPdf && pageSource?.kind === "image" && (
           <div
-            className="relative flex max-h-full max-w-full shrink-0"
+            className="relative flex h-full max-h-full max-w-full shrink-0 items-center"
             style={{ transform: `scale(${zoomPercent / 100})` }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- externally-hosted Blob URL, next/image is unnecessary here */}
