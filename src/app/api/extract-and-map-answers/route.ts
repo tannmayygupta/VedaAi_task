@@ -11,8 +11,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchBlobFile, isAllowedBlobUrl } from "@/lib/gemini/fetchBlobFile";
 import { callGeminiJson } from "@/lib/gemini/client";
-import { withSchemaValidation } from "@/lib/gemini/withSchemaValidation";
+import { withProviderFallback } from "@/lib/gemini/withProviderFallback";
 import { textPart, fileBytesToPart } from "@/lib/gemini/part";
+import { callOpenAiJson } from "@/lib/openai/client";
+import { buildOpenAiFileInput } from "@/lib/openai/part";
+import { filenameForMimeType } from "@/lib/mimeFilename";
 import {
   ANSWER_MAPPING_SYSTEM_PROMPT,
   buildAnswerMappingUserPrompt,
@@ -66,7 +69,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const file = await fetchBlobFile(body.blobUrl);
 
-    const attempt = async (correctionNote?: string) =>
+    const geminiAttempt = async (correctionNote?: string) =>
       callGeminiJson({
         parts: [
           textPart(ANSWER_MAPPING_SYSTEM_PROMPT),
@@ -77,7 +80,24 @@ export async function POST(request: Request): Promise<NextResponse> {
         responseJsonSchema,
       });
 
-    const result = await withSchemaValidation(ResponseSchema, attempt);
+    // Failover, not just a cross-check: if Gemini is down or exhausted,
+    // OpenAI independently redoes the same transcribe+match+grade job from
+    // the same file, using the same prompt text — see docs/DECISIONS.md.
+    const openAiAttempt = async (correctionNote?: string) =>
+      callOpenAiJson({
+        instructions: ANSWER_MAPPING_SYSTEM_PROMPT,
+        userText:
+          buildAnswerMappingUserPrompt(questions) + (correctionNote ? `\n\n${correctionNote}` : ""),
+        ...buildOpenAiFileInput(
+          file.bytes,
+          file.mimeType,
+          filenameForMimeType(file.mimeType, "answer-sheet"),
+        ),
+        responseJsonSchema,
+        responseSchemaName: "answer_mapping",
+      });
+
+    const result = await withProviderFallback(ResponseSchema, geminiAttempt, openAiAttempt);
     if (!result.ok) {
       return NextResponse.json(pipelineErrorToResponseBody(result.error), { status: 502 });
     }
@@ -99,7 +119,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }));
     const summary = buildMappingSummary(gradings, regions);
 
-    return NextResponse.json({ regions, gradings, summary });
+    return NextResponse.json({ regions, gradings, summary, provider: result.provider });
   } catch (error) {
     const pipelineError = normalizeError(error, "unreadable-file");
     return NextResponse.json(pipelineErrorToResponseBody(pipelineError), { status: 500 });

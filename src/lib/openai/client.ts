@@ -6,7 +6,14 @@ export type CallOpenAiJsonParams = {
   instructions: string;
   userText: string;
   /** Base64 data URLs, in order — the model is asked to reference them by this order. */
-  images: string[];
+  images?: string[];
+  /**
+   * Whole files (PDF or image) as base64 data URIs, sent via the Responses
+   * API's `input_file` content type — used for the Gemini-failover path,
+   * which needs to hand the model the entire question paper/answer sheet,
+   * not per-region crops like the handwriting cross-check does.
+   */
+  files?: { dataUri: string; filename: string }[];
   responseJsonSchema: Record<string, unknown>;
   responseSchemaName: string;
   model?: string;
@@ -29,10 +36,14 @@ export async function callOpenAiJson(params: CallOpenAiJsonParams): Promise<unkn
   const content: Array<
     | { type: "input_text"; text: string }
     | { type: "input_image"; image_url: string; detail: "high" }
+    | { type: "input_file"; file_data: string; filename: string }
   > = [{ type: "input_text", text: params.userText }];
-  for (const [index, imageUrl] of params.images.entries()) {
+  for (const [index, imageUrl] of (params.images ?? []).entries()) {
     content.push({ type: "input_text", text: `Image ${index}:` });
     content.push({ type: "input_image", image_url: imageUrl, detail: "high" });
+  }
+  for (const file of params.files ?? []) {
+    content.push({ type: "input_file", file_data: file.dataUri, filename: file.filename });
   }
 
   const response = await client.responses.create({

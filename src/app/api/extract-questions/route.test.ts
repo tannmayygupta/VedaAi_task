@@ -11,9 +11,15 @@ vi.mock("@/lib/gemini/client", () => ({
   callGeminiJson: (...args: unknown[]) => callGeminiJsonMock(...args),
 }));
 
+const callOpenAiJsonMock = vi.fn();
+vi.mock("@/lib/openai/client", () => ({
+  callOpenAiJson: (...args: unknown[]) => callOpenAiJsonMock(...args),
+}));
+
 // Real schemas, prompt module, error helpers, and withSchemaValidation are used
 // as-is (not mocked) so this test exercises the route's actual wiring, only
-// mocking the two real I/O boundaries: the Blob fetch and the Gemini call.
+// mocking the three real I/O boundaries: the Blob fetch, the Gemini call, and
+// the OpenAI fallback call.
 
 const { POST } = await import("./route");
 
@@ -42,6 +48,7 @@ describe("POST /api/extract-questions", () => {
   beforeEach(() => {
     fetchBlobFileMock.mockReset();
     callGeminiJsonMock.mockReset();
+    callOpenAiJsonMock.mockReset();
     fetchBlobFileMock.mockResolvedValue({
       bytes: new ArrayBuffer(0),
       mimeType: "application/pdf",
@@ -66,7 +73,20 @@ describe("POST /api/extract-questions", () => {
     expect(response.status).toBe(200);
     const json = await response.json();
     expect(json.questions).toEqual(VALID_QUESTIONS);
+    expect(json.provider).toBe("gemini");
     expect(callGeminiJsonMock).toHaveBeenCalledTimes(1);
+    expect(callOpenAiJsonMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to OpenAI and succeeds when Gemini fails entirely", async () => {
+    callGeminiJsonMock.mockRejectedValue(new Error("quota exceeded"));
+    callOpenAiJsonMock.mockResolvedValueOnce({ questions: VALID_QUESTIONS });
+
+    const response = await POST(makeRequest({ blobUrl: "https://blob.example/qp.pdf" }));
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.questions).toEqual(VALID_QUESTIONS);
+    expect(json.provider).toBe("openai");
   });
 
   it("retries once and succeeds when the first model response is malformed", async () => {
@@ -81,14 +101,16 @@ describe("POST /api/extract-questions", () => {
     expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
   });
 
-  it("returns 502 when the model response is malformed on both attempts", async () => {
+  it("returns 502 when both Gemini and its OpenAI fallback are malformed on every attempt", async () => {
     callGeminiJsonMock.mockResolvedValue({ questions: [{ bogus: true }] });
+    callOpenAiJsonMock.mockResolvedValue({ questions: [{ bogus: true }] });
 
     const response = await POST(makeRequest({ blobUrl: "https://blob.example/qp.pdf" }));
     expect(response.status).toBe(502);
     const json = await response.json();
     expect(json.code).toBe("malformed-response");
     expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
+    expect(callOpenAiJsonMock).toHaveBeenCalledTimes(2);
   });
 
   it("returns 500 with malformed-response when the model returns questions out of printed order", async () => {

@@ -89,6 +89,31 @@ describe("callOpenAiJson", () => {
     ]);
   });
 
+  it("includes one input_file block per file, in order, after any images", async () => {
+    createMock.mockResolvedValue({ output_text: "{}" });
+
+    await callOpenAiJson({
+      instructions: "system",
+      userText: "hi",
+      files: [
+        { dataUri: "data:application/pdf;base64,QUESTIONPAPER", filename: "question-paper.pdf" },
+      ],
+      responseJsonSchema: {},
+      responseSchemaName: "test_schema",
+    });
+
+    const call = createMock.mock.calls[0][0];
+    const content = call.input[0].content;
+    expect(content).toEqual([
+      { type: "input_text", text: "hi" },
+      {
+        type: "input_file",
+        file_data: "data:application/pdf;base64,QUESTIONPAPER",
+        filename: "question-paper.pdf",
+      },
+    ]);
+  });
+
   it("requests structured output via json_schema with the given schema and name", async () => {
     createMock.mockResolvedValue({ output_text: "{}" });
     const schema = { type: "object", properties: {} };

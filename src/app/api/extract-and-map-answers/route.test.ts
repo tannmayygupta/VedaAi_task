@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const fetchBlobFileMock = vi.fn();
 const callGeminiJsonMock = vi.fn();
+const callOpenAiJsonMock = vi.fn();
 
 vi.mock("@/lib/gemini/fetchBlobFile", () => ({
   fetchBlobFile: (...args: unknown[]) => fetchBlobFileMock(...args),
@@ -10,6 +11,10 @@ vi.mock("@/lib/gemini/fetchBlobFile", () => ({
 
 vi.mock("@/lib/gemini/client", () => ({
   callGeminiJson: (...args: unknown[]) => callGeminiJsonMock(...args),
+}));
+
+vi.mock("@/lib/openai/client", () => ({
+  callOpenAiJson: (...args: unknown[]) => callOpenAiJsonMock(...args),
 }));
 
 vi.mock("@/lib/errors", () => {
@@ -85,6 +90,7 @@ describe("POST /api/extract-and-map-answers", () => {
   beforeEach(() => {
     fetchBlobFileMock.mockReset();
     callGeminiJsonMock.mockReset();
+    callOpenAiJsonMock.mockReset();
   });
 
   it("returns 400 when blobUrl is missing", async () => {
@@ -134,6 +140,29 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(json.gradings[0].questionId).toBe("q1");
     expect(json.summary.totalAwarded).toBe(2);
     expect(json.summary.totalPossible).toBe(2);
+    expect(json.provider).toBe("gemini");
+    expect(callOpenAiJsonMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to OpenAI and succeeds when Gemini fails entirely", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: new ArrayBuffer(8),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockRejectedValue(new Error("quota exceeded"));
+    callOpenAiJsonMock.mockResolvedValueOnce({
+      regions: [sampleRegion()],
+      gradings: [sampleGrading()],
+    });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.regions[0].matchedQuestionId).toBe("q1");
+    expect(json.provider).toBe("openai");
   });
 
   it("rounds an off-step marksAwarded to the nearest half mark instead of passing it through", async () => {
