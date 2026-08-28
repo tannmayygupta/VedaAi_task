@@ -48,7 +48,7 @@ export default function Home() {
 
   if (isUploading) {
     return (
-      <AppShell>
+      <AppShell background="muted">
         <LoadingScreen message="Uploading…" />
       </AppShell>
     );

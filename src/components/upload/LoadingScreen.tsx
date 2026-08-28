@@ -23,7 +23,7 @@ export function LoadingScreen({ message = "Extracting…" }: LoadingScreenProps)
         height={135}
         priority
       />
-      <p className="text-center text-[30px] font-bold leading-9 tracking-[-1.2px] text-ink-primary">
+      <p className="bg-[linear-gradient(to_right,#303030_0%,#606060_40%,#808080_50%,#606060_60%,#303030_100%)] bg-clip-text text-center text-[30px] font-bold leading-9 tracking-[-1.2px] text-transparent">
         {message}
       </p>
       <p className="text-xl leading-9 tracking-[-1.2px] text-[#464646]/75">This may take a while</p>

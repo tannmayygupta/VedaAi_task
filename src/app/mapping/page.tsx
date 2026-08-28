@@ -25,7 +25,7 @@ function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <AppShell>
+    <AppShell background="muted">
       <div className="flex h-full min-h-[600px] flex-col items-center justify-center gap-3 text-center">
         <p className="text-lg font-bold text-ink-primary">{title}</p>
         <p className="text-sm text-ink-secondary">{message}</p>
@@ -73,7 +73,7 @@ function MappingScreen({
 
   if (questions.length === 0) {
     return (
-      <AppShell>
+      <AppShell background="muted">
         <NoQuestionsFoundState />
       </AppShell>
     );
@@ -95,7 +95,7 @@ function MappingScreen({
   }
 
   return (
-    <AppShell>
+    <AppShell background="muted">
       <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
         <div className="flex w-full items-center rounded-full bg-surface-white p-1 shadow-realistic lg:hidden">
           <button
@@ -191,7 +191,7 @@ function MappingPageContent() {
 
   if (dataState.status === "loading") {
     return (
-      <AppShell>
+      <AppShell background="muted">
         <LoadingScreen message="Extracting…" />
       </AppShell>
     );
@@ -215,7 +215,7 @@ export default function MappingPage() {
   return (
     <Suspense
       fallback={
-        <AppShell>
+        <AppShell background="muted">
           <LoadingScreen message="Extracting…" />
         </AppShell>
       }

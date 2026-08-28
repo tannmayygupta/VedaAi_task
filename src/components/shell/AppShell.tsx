@@ -6,11 +6,30 @@ import { TopBar } from "./TopBar";
 import { MobileHeader } from "./MobileHeader";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export type AppShellProps = {
+  children: ReactNode;
+  /**
+   * Figma specifies two distinct page-background gradients, not one: the
+   * Upload screen's own frame uses #f5f5f5→#e9e5e5 ("default"), while both
+   * the Loading and Mapping frames use a different, slightly darker
+   * #eeeeee→#dadada ("muted"). Defaults to "default" since Upload is the
+   * app's entry point.
+   */
+  background?: "default" | "muted";
+};
+
+const BACKGROUND_GRADIENTS = {
+  default: "from-[#f5f5f5] to-[#e9e5e5]",
+  muted: "from-[#eeeeee] to-[#dadada]",
+} as const;
+
+export function AppShell({ children, background = "default" }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-gradient-to-b from-[#f5f5f5] to-[#e9e5e5] p-3">
+    <div
+      className={`relative h-screen w-full overflow-hidden bg-gradient-to-b p-3 ${BACKGROUND_GRADIENTS[background]}`}
+    >
       <div className="flex h-full gap-3">
         <div className="hidden lg:flex">
           <Sidebar />
