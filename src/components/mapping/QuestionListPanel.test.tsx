@@ -53,6 +53,7 @@ describe("QuestionListPanel", () => {
         regions={regions}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
       />,
     );
     expect(screen.getByText("What is the capital of France?")).toBeInTheDocument();
@@ -67,6 +68,7 @@ describe("QuestionListPanel", () => {
         regions={regions}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
       />,
     );
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
@@ -82,11 +84,60 @@ describe("QuestionListPanel", () => {
         regions={regions}
         selectedQuestionId={null}
         onSelectQuestion={onSelectQuestion}
+        onClearSelection={vi.fn()}
       />,
     );
     const toggles = screen.getAllByRole("button", { name: /toggle question details/i });
     await userEvent.click(toggles[0]);
     expect(onSelectQuestion).toHaveBeenCalledWith("q1");
+  });
+
+  it("does not call onSelectQuestion or onClearSelection when collapsing a card that isn't the highlighted one", async () => {
+    const onSelectQuestion = vi.fn();
+    const onClearSelection = vi.fn();
+    render(
+      <QuestionListPanel
+        questions={questions}
+        gradings={gradings}
+        regions={regions}
+        selectedQuestionId="q2"
+        onSelectQuestion={onSelectQuestion}
+        onClearSelection={onClearSelection}
+      />,
+    );
+    // Expand q1 first (not the highlighted question, q2).
+    const toggles = screen.getAllByRole("button", { name: /toggle question details/i });
+    await userEvent.click(toggles[0]);
+    onSelectQuestion.mockClear();
+
+    // Collapsing q1 again shouldn't touch the highlight, since q2 is active.
+    await userEvent.click(toggles[0]);
+    expect(onSelectQuestion).not.toHaveBeenCalled();
+    expect(onClearSelection).not.toHaveBeenCalled();
+  });
+
+  it("calls onClearSelection when collapsing the card that is the highlighted one", async () => {
+    const onSelectQuestion = vi.fn();
+    const onClearSelection = vi.fn();
+    render(
+      <QuestionListPanel
+        questions={questions}
+        gradings={gradings}
+        regions={regions}
+        selectedQuestionId="q1"
+        onSelectQuestion={onSelectQuestion}
+        onClearSelection={onClearSelection}
+      />,
+    );
+    const toggles = screen.getAllByRole("button", { name: /toggle question details/i });
+    // Expand q1 (already the highlighted question per selectedQuestionId).
+    await userEvent.click(toggles[0]);
+    onSelectQuestion.mockClear();
+
+    // Collapsing it again should clear the highlight, not re-select it.
+    await userEvent.click(toggles[0]);
+    expect(onClearSelection).toHaveBeenCalledTimes(1);
+    expect(onSelectQuestion).not.toHaveBeenCalled();
   });
 
   it("expands all cards on Expand All and collapses them again on Collapse All", async () => {
@@ -97,6 +148,7 @@ describe("QuestionListPanel", () => {
         regions={regions}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
       />,
     );
     expect(screen.queryByText("Correct!")).not.toBeInTheDocument();
@@ -140,6 +192,7 @@ describe("QuestionListPanel", () => {
         regions={regionsWithConfidence}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
       />,
     );
 
@@ -167,6 +220,7 @@ describe("QuestionListPanel", () => {
         regions={regionsWithConfidence}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
         mismatchedRegionIds={new Set(["r1"])}
       />,
     );
@@ -196,6 +250,7 @@ describe("QuestionListPanel", () => {
         regions={regionsWithConfidence}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
         mismatchedRegionIds={new Set(["r1"])}
       />,
     );
@@ -213,6 +268,7 @@ describe("QuestionListPanel", () => {
         regions={regions}
         selectedQuestionId={null}
         onSelectQuestion={vi.fn()}
+        onClearSelection={vi.fn()}
       />,
     );
 

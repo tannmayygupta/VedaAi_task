@@ -16,6 +16,10 @@ export type QuestionListPanelProps = {
   regions: AnswerRegion[];
   selectedQuestionId: string | null;
   onSelectQuestion: (questionId: string) => void;
+  /** Called instead of onSelectQuestion when collapsing the card that's
+   * currently highlighted, so the highlight doesn't linger with no expanded
+   * card showing it. Not called when collapsing any other (non-active) card. */
+  onClearSelection: () => void;
   /** Region ids the Phase 9 handwriting cross-check flagged as disagreeing (see docs/PRD.md §16). */
   mismatchedRegionIds?: ReadonlySet<string>;
 };
@@ -29,7 +33,9 @@ export function QuestionListPanel({
   questions,
   gradings,
   regions,
+  selectedQuestionId,
   onSelectQuestion,
+  onClearSelection,
   mismatchedRegionIds = new Set(),
 }: QuestionListPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -37,16 +43,26 @@ export function QuestionListPanel({
   const allExpanded = expandedIds.size === questions.length && questions.length > 0;
 
   function handleToggleExpand(questionId: string) {
+    const isCollapsing = expandedIds.has(questionId);
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(questionId)) {
+      if (isCollapsing) {
         next.delete(questionId);
       } else {
         next.add(questionId);
       }
       return next;
     });
-    onSelectQuestion(questionId);
+
+    if (isCollapsing) {
+      // Collapsing a card that isn't the highlighted one shouldn't touch the
+      // highlight at all — only collapsing the ACTIVE card clears it.
+      if (questionId === selectedQuestionId) {
+        onClearSelection();
+      }
+    } else {
+      onSelectQuestion(questionId);
+    }
   }
 
   function handleToggleExpandAll() {

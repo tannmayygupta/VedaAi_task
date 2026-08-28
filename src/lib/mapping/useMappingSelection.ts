@@ -13,6 +13,7 @@ export type MappingSelectionState = {
   hasNoAnswer: boolean;
   selectQuestion: (questionId: string) => void;
   selectUnmatchedRegion: (regionId: string) => void;
+  clearSelection: () => void;
   goToPage: (pageIndex: number) => void;
   nextPage: () => void;
   prevPage: () => void;
@@ -52,6 +53,15 @@ export function useMappingSelection(
     },
     [regions],
   );
+
+  // Collapsing the card that's currently highlighted should clear the
+  // highlight (not leave it "orphaned" with no expanded card showing it) —
+  // deliberately doesn't touch currentPageIndex, unlike selectQuestion/
+  // selectUnmatchedRegion, since clearing isn't "go look at this."
+  const clearSelection = useCallback(() => {
+    setSelectedQuestionId(null);
+    setSelectedUnmatchedRegionId(null);
+  }, []);
 
   const goToPage = useCallback((pageIndex: number) => {
     setCurrentPageIndex(pageIndex);
@@ -97,6 +107,7 @@ export function useMappingSelection(
     hasNoAnswer,
     selectQuestion,
     selectUnmatchedRegion,
+    clearSelection,
     goToPage,
     nextPage,
     prevPage,

@@ -133,6 +133,7 @@ function MappingScreen({
             regions={regions}
             selectedQuestionId={selection.selectedQuestionId}
             onSelectQuestion={selectQuestionAndShowAnswer}
+            onClearSelection={selection.clearSelection}
             mismatchedRegionIds={mismatchedRegionIds}
           />
           <UnmatchedAnswersPanel

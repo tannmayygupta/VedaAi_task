@@ -80,6 +80,16 @@ describe("useMappingSelection", () => {
     expect(result.current.currentPageIndex).toBe(2);
   });
 
+  it("clearSelection resets both selection ids without touching currentPageIndex", () => {
+    const { result } = renderHook(() => useMappingSelection(questions, regions));
+    act(() => result.current.selectQuestion("q3"));
+    act(() => result.current.goToPage(1));
+    act(() => result.current.clearSelection());
+    expect(result.current.selectedQuestionId).toBeNull();
+    expect(result.current.activeRegions).toEqual([]);
+    expect(result.current.currentPageIndex).toBe(1);
+  });
+
   it("goToPage/nextPage/prevPage update currentPageIndex", () => {
     const { result } = renderHook(() => useMappingSelection(questions, regions));
     act(() => result.current.goToPage(2));
