@@ -5,6 +5,7 @@ const callGeminiJsonMock = vi.fn();
 
 vi.mock("@/lib/gemini/fetchBlobFile", () => ({
   fetchBlobFile: (...args: unknown[]) => fetchBlobFileMock(...args),
+  isAllowedBlobUrl: () => true,
 }));
 
 vi.mock("@/lib/gemini/client", () => ({

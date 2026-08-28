@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const fetchBlobFileMock = vi.fn();
 vi.mock("@/lib/gemini/fetchBlobFile", () => ({
   fetchBlobFile: (...args: unknown[]) => fetchBlobFileMock(...args),
+  isAllowedBlobUrl: () => true,
 }));
 
 const callGeminiJsonMock = vi.fn();

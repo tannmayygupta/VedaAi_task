@@ -25,9 +25,15 @@ export function groupContinuations(regions: AnswerRegion[]): AnswerRegion[][] {
     if (!isHead) continue;
 
     const chain: AnswerRegion[] = [region];
+    // Guards against a malformed model response forming a continuation cycle
+    // (e.g. r1 continues from r2 and r2 continues from r1), which would
+    // otherwise loop forever.
+    const visited = new Set<string>([region.id]);
     let current = region;
     while (continuerOf.has(current.id)) {
       const next = continuerOf.get(current.id)!;
+      if (visited.has(next.id)) break;
+      visited.add(next.id);
       chain.push(next);
       current = next;
     }

@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchBlobFile } from "./fetchBlobFile";
+import { fetchBlobFile, isAllowedBlobUrl } from "./fetchBlobFile";
+
+const VALID_BLOB_URL = "https://abc123def456.public.blob.vercel-storage.com/file.pdf";
 
 function makeHeaders(contentType: string | null) {
   return { get: (name: string) => (name.toLowerCase() === "content-type" ? contentType : null) };
@@ -19,12 +21,12 @@ describe("fetchBlobFile", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await fetchBlobFile("https://blob.example/file.pdf");
+    const result = await fetchBlobFile(VALID_BLOB_URL);
 
     expect(result.bytes).toBe(buffer);
     expect(result.mimeType).toBe("application/pdf");
     expect(result.sizeBytes).toBe(buffer.byteLength);
-    expect(fetchMock).toHaveBeenCalledWith("https://blob.example/file.pdf");
+    expect(fetchMock).toHaveBeenCalledWith(VALID_BLOB_URL);
   });
 
   it("falls back to application/octet-stream when content-type is missing", async () => {
@@ -38,7 +40,7 @@ describe("fetchBlobFile", () => {
       }),
     );
 
-    const result = await fetchBlobFile("https://blob.example/file.bin");
+    const result = await fetchBlobFile(VALID_BLOB_URL);
 
     expect(result.mimeType).toBe("application/octet-stream");
   });
@@ -55,6 +57,40 @@ describe("fetchBlobFile", () => {
       }),
     );
 
-    await expect(fetchBlobFile("https://blob.example/missing.pdf")).rejects.toThrow(/404/);
+    await expect(fetchBlobFile(VALID_BLOB_URL)).rejects.toThrow(/404/);
+  });
+
+  it("rejects a URL outside the Vercel Blob store without calling fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchBlobFile("https://evil.example/internal-secret")).rejects.toThrow(
+      /Refusing to fetch/,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("isAllowedBlobUrl", () => {
+  it("accepts an https URL on the Vercel Blob public storage domain", () => {
+    expect(isAllowedBlobUrl(VALID_BLOB_URL)).toBe(true);
+  });
+
+  it("rejects a non-Blob-storage host", () => {
+    expect(isAllowedBlobUrl("https://evil.example/file.pdf")).toBe(false);
+  });
+
+  it("rejects http (non-https)", () => {
+    expect(isAllowedBlobUrl("http://abc123.public.blob.vercel-storage.com/file.pdf")).toBe(false);
+  });
+
+  it("rejects a malformed URL", () => {
+    expect(isAllowedBlobUrl("not-a-url")).toBe(false);
+  });
+
+  it("rejects a lookalike host that merely ends with the suffix as a prefix trick", () => {
+    expect(isAllowedBlobUrl("https://public.blob.vercel-storage.com.evil.example/file.pdf")).toBe(
+      false,
+    );
   });
 });

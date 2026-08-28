@@ -6,7 +6,7 @@ export const maxDuration = 300;
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { fetchBlobFile } from "@/lib/gemini/fetchBlobFile";
+import { fetchBlobFile, isAllowedBlobUrl } from "@/lib/gemini/fetchBlobFile";
 import { callGeminiJson } from "@/lib/gemini/client";
 import { withSchemaValidation } from "@/lib/gemini/withSchemaValidation";
 import { textPart, fileBytesToPart } from "@/lib/gemini/part";
@@ -37,6 +37,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   if (!body.blobUrl || typeof body.blobUrl !== "string") {
     return NextResponse.json({ error: "Missing required field: blobUrl", code: "api-error" }, { status: 400 });
+  }
+  if (!isAllowedBlobUrl(body.blobUrl)) {
+    return NextResponse.json({ error: "blobUrl is not a valid Blob storage URL", code: "api-error" }, { status: 400 });
   }
 
   try {

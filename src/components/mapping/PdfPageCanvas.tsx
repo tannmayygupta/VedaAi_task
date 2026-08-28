@@ -8,6 +8,10 @@ export type PdfPageCanvasProps = {
   pageNumber: number;
   scale: number;
   className?: string;
+  /** Fired with the canvas's real pixel size as soon as it's known (before
+   * the page finishes painting), so a parent can size an overlay container
+   * to the exact same aspect ratio instead of guessing from the CSS box. */
+  onDimensionsChange?: (width: number, height: number) => void;
 };
 
 /**
@@ -17,9 +21,22 @@ export type PdfPageCanvasProps = {
  * way the image answer-sheet path already handles zoom, rather than
  * re-rendering the PDF on every zoom step.
  */
-export function PdfPageCanvas({ getPage, pageNumber, scale, className }: PdfPageCanvasProps) {
+export function PdfPageCanvas({
+  getPage,
+  pageNumber,
+  scale,
+  className,
+  onDimensionsChange,
+}: PdfPageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // Kept in a ref (not a useEffect dep) so a new inline callback identity on
+  // every parent render doesn't re-trigger this effect's page fetch/render.
+  // Synced in its own effect (not during render) per the rules of React refs.
+  const onDimensionsChangeRef = useRef(onDimensionsChange);
+  useEffect(() => {
+    onDimensionsChangeRef.current = onDimensionsChange;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +52,7 @@ export function PdfPageCanvas({ getPage, pageNumber, scale, className }: PdfPage
         const viewport = page.getViewport({ scale });
         canvas.width = viewport.width;
         canvas.height = viewport.height;
+        onDimensionsChangeRef.current?.(viewport.width, viewport.height);
         const task = page.render({ canvas, viewport });
         renderTask = task;
         await task.promise;

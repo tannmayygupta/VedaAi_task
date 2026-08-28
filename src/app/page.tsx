@@ -10,9 +10,23 @@ import { UploadHeroIllustration } from "@/components/upload/UploadHeroIllustrati
 import { useUploadFlow } from "@/lib/upload/useUploadFlow";
 import { uploadFileToBlob } from "@/lib/upload/uploadFileToBlob";
 import { mergeFilesToPdf } from "@/lib/upload/mergeFilesToPdf";
+import { MAX_FILE_SIZE_BYTES } from "@/lib/validation/fileValidation";
+
+// Each individually-selected image is validated against MAX_FILE_SIZE_BYTES
+// at selection time, but several valid images merged into one PDF can still
+// exceed it — checked here, after merging, since that's the only point the
+// real combined size is known.
+class MergedFileTooLargeError extends Error {}
 
 async function prepareSlotFileForUpload(files: File[]): Promise<File> {
-  return files.length > 1 ? mergeFilesToPdf(files) : files[0];
+  if (files.length <= 1) return files[0];
+  const merged = await mergeFilesToPdf(files);
+  if (merged.size > MAX_FILE_SIZE_BYTES) {
+    throw new MergedFileTooLargeError(
+      "These images are too large once combined (over 10MB) — try uploading fewer or smaller images.",
+    );
+  }
+  return merged;
 }
 
 export default function Home() {
@@ -38,9 +52,11 @@ export default function Home() {
         answerSheet: answerSheetBlob.url,
       });
       router.push(`/mapping?${params.toString()}`);
-    } catch {
+    } catch (err) {
       setUploadError(
-        "Upload failed — check your connection (and that Vercel Blob is configured) and try again.",
+        err instanceof MergedFileTooLargeError
+          ? err.message
+          : "Upload failed — check your connection (and that Vercel Blob is configured) and try again.",
       );
       setIsUploading(false);
     }
@@ -95,7 +111,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-3 px-4 text-center">
           <StartMappingButton enabled={canStartMapping} onClick={handleStartMapping} />
           <p className="text-sm text-ink-secondary/80">
-            Once both files are uploaded, you&apos;ll able to map answers with questions
+            Once both files are uploaded, you&apos;ll be able to map answers with questions
           </p>
           {uploadError && <p className="text-sm text-danger">{uploadError}</p>}
         </div>
