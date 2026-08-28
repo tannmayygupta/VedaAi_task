@@ -136,6 +136,26 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(json.summary.totalPossible).toBe(2);
   });
 
+  it("rounds an off-step marksAwarded to the nearest half mark instead of passing it through", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: new ArrayBuffer(8),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValueOnce({
+      regions: [sampleRegion()],
+      gradings: [sampleGrading({ marksAwarded: 1.3 })],
+    });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.gradings[0].marksAwarded).toBe(1.5);
+    expect(json.summary.totalAwarded).toBe(1.5);
+  });
+
   it("returns 502 when gradings are missing a required question id", async () => {
     fetchBlobFileMock.mockResolvedValueOnce({
       bytes: new ArrayBuffer(8),

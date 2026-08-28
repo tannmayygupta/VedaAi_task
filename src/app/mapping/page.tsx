@@ -101,7 +101,7 @@ function MappingScreen({
           <button
             type="button"
             onClick={() => setMobileTab("questions")}
-            className={`flex-1 rounded-full py-2 text-sm font-medium ${
+            className={`flex-1 rounded-full py-[13px] text-sm font-medium ${
               mobileTab === "questions"
                 ? "bg-surface-dark-grey text-white"
                 : "text-ink-secondary"
@@ -112,7 +112,7 @@ function MappingScreen({
           <button
             type="button"
             onClick={() => setMobileTab("answerSheet")}
-            className={`flex-1 rounded-full py-2 text-sm font-medium ${
+            className={`flex-1 rounded-full py-[13px] text-sm font-medium ${
               mobileTab === "answerSheet"
                 ? "bg-surface-dark-grey text-white"
                 : "text-ink-secondary"

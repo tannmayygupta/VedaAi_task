@@ -16,3 +16,19 @@ export const DEFAULT_MARKS_WHEN_UNSTATED = 2;
 export function resolveMarksTotal(question: Pick<Question, "marksTotal">): number {
   return question.marksTotal ?? DEFAULT_MARKS_WHEN_UNSTATED;
 }
+
+/**
+ * Rounds a model-reported `marksAwarded` to the nearest whole or half mark
+ * (0, 0.5, 1, 1.5, ...) and clamps it to `[0, marksTotal]`. The grading
+ * prompt already instructs the model to round this way, but nothing in
+ * `GradingSchema` enforced it — same rationale as recomputing `id`/
+ * `displayLabel` server-side rather than trusting the model's own
+ * formatting (see docs/DECISIONS.md, Phase 3). Normalizing here instead of
+ * adding a hard schema constraint (e.g. `.multipleOf(0.5)`) means an
+ * off-step value gets silently corrected rather than failing the whole
+ * response and burning a retry.
+ */
+export function normalizeMarksAwarded(marksAwarded: number, marksTotal: number): number {
+  const rounded = Math.round(marksAwarded * 2) / 2;
+  return Math.min(Math.max(rounded, 0), marksTotal);
+}

@@ -19,6 +19,7 @@ import {
 } from "@/lib/gemini/prompts/answerMapping";
 import { buildMappingResponseSchema } from "@/lib/schemas/mappingResponse";
 import { buildMappingSummary } from "@/lib/mapping/mappingSummary";
+import { normalizeMarksAwarded } from "@/lib/mapping/defaultMarks";
 import { QuestionArraySchema, type Question } from "@/lib/schemas/question";
 import { normalizeError, pipelineErrorToResponseBody } from "@/lib/errors";
 
@@ -90,7 +91,12 @@ export async function POST(request: Request): Promise<NextResponse> {
         ? { ...region, matchedQuestionId: null, matchConfidence: 0 }
         : region,
     );
-    const gradings = result.data.gradings;
+    // The prompt asks the model to round to a whole or half mark, but nothing
+    // in GradingSchema enforced that — normalize here rather than trust it.
+    const gradings = result.data.gradings.map((g) => ({
+      ...g,
+      marksAwarded: normalizeMarksAwarded(g.marksAwarded, g.marksTotal),
+    }));
     const summary = buildMappingSummary(gradings, regions);
 
     return NextResponse.json({ regions, gradings, summary });
