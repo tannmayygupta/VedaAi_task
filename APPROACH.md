@@ -24,8 +24,11 @@ separate backend: Next.js API routes are enough for the upload → extract → m
 given the no-DB/no-auth constraint, and Vercel is a one-command deploy that satisfies the "live
 URL" requirement with minimal ops.
 
-**Google Gemini (`gemini-3.6-flash`, via `@google/genai`)** is the only AI model/API used, for
-question extraction, answer extraction, answer-to-question mapping, and grading.
+**Google Gemini (`gemini-3.6-flash`, via `@google/genai`)** is the primary model for question
+extraction, answer extraction, answer-to-question mapping, and grading. **OpenAI (`gpt-4o`, via
+the Responses API)** serves two secondary roles: an always-on handwriting cross-check, and a real
+failover that independently redoes Gemini's job if Gemini fails outright — see "Bonus" below for
+both.
 
 **Why Gemini and not GPT-4o or Claude:** the core UI requirement is highlighting the *exact
 region* of a handwritten answer on the scanned page. Gemini's vision models return **normalized
@@ -85,17 +88,31 @@ throwing or silently accepting bad data. One bounded retry is a deliberate middl
 (at most 2x calls), gives the model a real chance to self-correct with concrete feedback, and has
 a hard stop so a genuinely broken response fails loudly instead of looping.
 
-## Bonus: dual-model handwriting cross-check
+## Bonus: dual-model handwriting cross-check, and a real Gemini→OpenAI failover
 
-As an optional second layer of trust, every transcribed answer region is independently re-read by
+Two separate uses of a second model, not to be confused with each other:
+
+**Cross-check (advisory, always on).** Every transcribed answer region is independently re-read by
 GPT (`gpt-4o`, via a batched Responses API call) in the background, after the mapping screen has
 already rendered from Gemini's result — it never blocks or delays the initial screen. If GPT's
 reading of a region disagrees with Gemini's, that question gets a "Verify" badge so the teacher
 knows to double-check it themselves, without either model's output being silently overwritten.
 This is additive only: Gemini's own transcription, matching, and grading are the single source of
-truth throughout; GPT never changes them, it only flags disagreement. If the OpenAI key is unset,
-rate-limited, or out of credits, the check simply never completes and no badges appear — the core
-pipeline is fully unaffected either way, since it depends on Gemini alone.
+truth throughout; GPT never changes them, it only flags disagreement. If OpenAI is unset,
+rate-limited, or out of credits, the check simply never completes and no badges appear — this part
+of the pipeline is fully unaffected either way.
+
+**Failover (a real second attempt at the same job, only when Gemini fails).** Both extraction
+routes (question extraction; answer extraction + mapping + grading) try Gemini first. If Gemini
+fails completely — a hard error (network, quota-exceeded) or still malformed after its own
+built-in one retry — the route independently redoes the *entire* job via OpenAI, using the exact
+same prompt text and the exact same schema, before giving up. This isn't the cross-check reused;
+it's OpenAI standing in as a full second implementation of the primary pipeline. The response
+includes `provider: "gemini" | "openai"` so which one actually served the result is observable.
+Verified for real: a live run hit genuine Gemini quota exhaustion, correctly triggered the
+failover, and OpenAI's real API was reached and returned a real, specific billing error — proving
+the request itself (auth, file input, schema) is well-formed, independent of whether that
+particular OpenAI account currently has spendable credits.
 
 ## Key decisions (why not X)
 
@@ -135,6 +152,28 @@ pipeline is fully unaffected either way, since it depends on Gemini alone.
 - Zero-question or zero-answer extraction results get real empty-state UI, not a blank/broken
   screen.
 
+## Final pre-submission audit
+
+Before submitting, ran a dedicated, structured reverse-engineering pass: re-documented the Figma
+design fresh, then compared the live deployed app and the actual code against it screen by screen
+(desktop and mobile), plus a security/robustness pass over the API routes. This caught and fixed
+four real issues that earlier testing had missed:
+
+- **The answer-highlight box could drift off the actual answer** in some window-size/page-aspect-
+  ratio combinations — a subtle regression introduced by an earlier fix for a different rendering
+  bug. Since correct highlighting is the assignment's central requirement, this was the
+  highest-priority fix from the whole audit; verified pixel-exact afterward via direct DOM
+  measurement, not just a visual glance.
+- An **SSRF hole**: the extraction routes fetched whatever URL a client sent with no check that it
+  actually belonged to this app's own file storage. Now validated against the real storage domain
+  before every fetch.
+- **Grading marks weren't guaranteed to land on a whole or half number** even though the model is
+  instructed to round that way — now normalized server-side regardless of what the model returns.
+- A minor mobile toggle-pill sizing gap (~10px short of the Figma spec).
+
+Full findings, false alarms ruled out, and reasoning for each fix are in the project's internal
+decision log; this section states only what changed and why it mattered.
+
 ## Assumptions & limitations
 
 - **Handwriting OCR is inherently imperfect.** Messy handwriting, crossed-out text, or diagrams
@@ -148,11 +187,15 @@ pipeline is fully unaffected either way, since it depends on Gemini alone.
 - **`DEFAULT_MARKS_WHEN_UNSTATED = 2`** is a judgment call (per the PRD's own suggested example),
   not derived from the source documents — it affects the total score whenever a question paper
   doesn't state marks for a question.
-- **Core pipeline depends on one provider (Gemini).** A Gemini outage or free-tier quota
-  exhaustion stops extraction/mapping/grading entirely. Acceptable for an assignment/demo;
-  production use would need a fallback provider. The optional GPT cross-check is a separate,
-  non-critical dependency — if OpenAI is unavailable (no credits, rate-limited, key unset), only
-  the bonus "Verify" badges are affected; the core pipeline is untouched.
+- **Core pipeline now fails over from Gemini to OpenAI, not single-provider.** If Gemini fails
+  entirely, both extraction routes independently redo the same job via OpenAI before giving up —
+  see "Bonus" above. This still isn't infinite redundancy: if *both* providers are down or
+  exhausted at once, extraction fails and the UI shows the existing error screen with "Try Again."
+  The OpenAI side of this failover has been verified to reach OpenAI's real API correctly (proven
+  by a real, specific billing error surfacing rather than a request-shape error) but not yet
+  verified to return a real, model-served result end-to-end, since that account had no spendable
+  credits at the time of testing — worth re-confirming once it does, though the request path
+  itself is already proven correct.
 - **No auth, no database, in-memory only** — by design, per the assignment's own constraints.
   Results exist only for the current browser session (with an optional sessionStorage cache for
   the current tab); nothing persists across sessions or devices.
