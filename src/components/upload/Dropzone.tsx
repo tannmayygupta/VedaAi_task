@@ -37,7 +37,7 @@ export function Dropzone({ label, accentLabel, onFilesSelected, multiple = true 
         event.preventDefault();
         onFilesSelected(Array.from(event.dataTransfer.files));
       }}
-      className="flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-[1.5px] border-dashed border-[#cecece] bg-surface-white p-[10px]"
+      className="flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl border-[1.5px] border-dashed border-[#cecece] bg-surface-white p-[10px]"
     >
       <input
         ref={inputRef}
