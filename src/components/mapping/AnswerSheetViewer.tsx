@@ -8,6 +8,7 @@ import { PdfPageCanvas } from "./PdfPageCanvas";
 import {
   resolveAnswerSheetPageSource,
   getAnswerSheetPageCount,
+  clampPageIndex,
   PDF_URL_PATTERN,
 } from "@/lib/mapping/answerSheetPageSource";
 import { usePdfDocument } from "@/lib/mapping/usePdfDocument";
@@ -43,6 +44,19 @@ export function AnswerSheetViewer({
     null,
   );
 
+  const url = blobUrls[0] ?? null;
+  const isPdf = url !== null && PDF_URL_PATTERN.test(url);
+  const pdfDocument = usePdfDocument(isPdf ? url : null);
+
+  const totalPages = isPdf
+    ? pdfDocument.status === "ready"
+      ? pdfDocument.numPages
+      : 1
+    : getAnswerSheetPageCount(blobUrls);
+  const clampedPageIndex = clampPageIndex(currentPageIndex, totalPages);
+  const pageSource = isPdf ? null : resolveAnswerSheetPageSource(blobUrls, clampedPageIndex);
+  const regionsOnThisPage = highlightRegions.filter((r) => r.pageIndex === clampedPageIndex);
+
   // A flex container with items-center/justify-center defaults an overflowing
   // child's scroll position to show its CENTER, not its top — if a rendered
   // page ever ends up taller than the panel (e.g. a percentage max-height
@@ -56,19 +70,7 @@ export function AnswerSheetViewer({
       el.scrollTop = 0;
       el.scrollLeft = 0;
     }
-  }, [currentPageIndex, zoomPercent]);
-
-  const url = blobUrls[0] ?? null;
-  const isPdf = url !== null && PDF_URL_PATTERN.test(url);
-  const pdfDocument = usePdfDocument(isPdf ? url : null);
-
-  const totalPages = isPdf
-    ? pdfDocument.status === "ready"
-      ? pdfDocument.numPages
-      : 1
-    : getAnswerSheetPageCount(blobUrls);
-  const pageSource = isPdf ? null : resolveAnswerSheetPageSource(blobUrls, currentPageIndex);
-  const regionsOnThisPage = highlightRegions.filter((r) => r.pageIndex === currentPageIndex);
+  }, [clampedPageIndex, zoomPercent]);
 
   // Different pages can have different aspect ratios — drop the previous
   // page's measured size on navigation so it briefly falls back to
@@ -76,7 +78,7 @@ export function AnswerSheetViewer({
   // ratio while the new one is being measured. Reset during render (React's
   // documented pattern for "state that depends on a changing prop"), not in
   // an effect, to avoid an extra cascading render.
-  const pageKey = `${currentPageIndex}:${url ?? ""}`;
+  const pageKey = `${clampedPageIndex}:${url ?? ""}`;
   const [prevPageKey, setPrevPageKey] = useState(pageKey);
   if (pageKey !== prevPageKey) {
     setPrevPageKey(pageKey);
@@ -94,10 +96,10 @@ export function AnswerSheetViewer({
             onZoomIn={() => setZoomPercent((z) => Math.min(200, z + 10))}
           />
           <PageNavigator
-            currentPageIndex={currentPageIndex}
+            currentPageIndex={clampedPageIndex}
             totalPages={totalPages}
-            onPrevPage={() => onGoToPage(Math.max(0, currentPageIndex - 1))}
-            onNextPage={() => onGoToPage(Math.min(totalPages - 1, currentPageIndex + 1))}
+            onPrevPage={() => onGoToPage(Math.max(0, clampedPageIndex - 1))}
+            onNextPage={() => onGoToPage(Math.min(totalPages - 1, clampedPageIndex + 1))}
           />
         </div>
       </div>
@@ -139,7 +141,7 @@ export function AnswerSheetViewer({
             >
               <PdfPageCanvas
                 getPage={pdfDocument.getPage}
-                pageNumber={currentPageIndex + 1}
+                pageNumber={clampedPageIndex + 1}
                 scale={PDF_RENDER_SCALE}
                 className="h-full w-full rounded-lg"
                 onDimensionsChange={(width, height) => setMediaDimensions({ width, height })}
@@ -166,7 +168,7 @@ export function AnswerSheetViewer({
               {/* eslint-disable-next-line @next/next/no-img-element -- externally-hosted Blob URL, next/image is unnecessary here */}
               <img
                 src={pageSource.url}
-                alt={`Answer sheet page ${currentPageIndex + 1}`}
+                alt={`Answer sheet page ${clampedPageIndex + 1}`}
                 className="max-h-full max-w-full rounded-lg object-contain"
                 onLoad={(e) => {
                   const img = e.currentTarget;
