@@ -15,6 +15,7 @@ function makeData(): MappingData {
       unmatchedRegionCount: 0,
       totalQuestionCount: 1,
     },
+    incompleteCoverage: false,
   };
 }
 

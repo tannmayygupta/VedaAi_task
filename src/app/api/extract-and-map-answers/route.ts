@@ -23,6 +23,8 @@ import {
 import { buildMappingResponseSchema } from "@/lib/schemas/mappingResponse";
 import { buildMappingSummary } from "@/lib/mapping/mappingSummary";
 import { normalizeMarksAwarded } from "@/lib/mapping/defaultMarks";
+import { countPdfPages } from "@/lib/mapping/countPdfPages";
+import { hasFullPageCoverage, maxValidPageCovered } from "@/lib/mapping/pageCoverage";
 import { QuestionArraySchema, type Question } from "@/lib/schemas/question";
 import { normalizeError, pipelineErrorToResponseBody } from "@/lib/errors";
 
@@ -102,24 +104,61 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(pipelineErrorToResponseBody(result.error), { status: 502 });
     }
 
+    // Guardrail against real observed run-to-run variance (see docs/DECISIONS.md
+    // "Post-mitigation re-audit of the OpenAI failover"): either provider can stop
+    // segmenting partway through a dense multi-page sheet and still confidently
+    // grade the un-reviewed later questions. If the winning provider's response
+    // doesn't reach near the sheet's real last page, give that SAME provider one
+    // more attempt with an explicit note before accepting the result as-is.
+    const totalPages = await countPdfPages(file.bytes, file.mimeType);
+    let mappingData = result.data;
+    let incompleteCoverage = !hasFullPageCoverage(mappingData.regions, totalPages);
+    if (incompleteCoverage && totalPages !== null) {
+      const retryAttempt = result.provider === "gemini" ? geminiAttempt : openAiAttempt;
+      const coverageNote =
+        `Your previous response only found content through page ${maxValidPageCovered(mappingData.regions, totalPages) + 1} ` +
+        `of this ${totalPages}-page answer sheet. Review the remaining pages (through page ${totalPages}) as ` +
+        `well and include any answers found there — do not stop early.`;
+      try {
+        const retryParsed = ResponseSchema.safeParse(await retryAttempt(coverageNote));
+        if (
+          retryParsed.success &&
+          maxValidPageCovered(retryParsed.data.regions, totalPages) >
+            maxValidPageCovered(mappingData.regions, totalPages)
+        ) {
+          mappingData = retryParsed.data;
+        }
+      } catch {
+        // A failed retry shouldn't turn an already-successful result into an error —
+        // fall through and report on the original result's coverage instead.
+      }
+      incompleteCoverage = !hasFullPageCoverage(mappingData.regions, totalPages);
+    }
+
     // Cross-check matchedQuestionId against the real injected question ids — the
     // AnswerRegion schema alone can't validate this since it has no visibility into
     // the question list at parse time (see docs/RESEARCH.md §9 note on this).
     const validQuestionIds = new Set(questions.map((q) => q.id));
-    const regions = result.data.regions.map((region) =>
+    const regions = mappingData.regions.map((region) =>
       region.matchedQuestionId && !validQuestionIds.has(region.matchedQuestionId)
         ? { ...region, matchedQuestionId: null, matchConfidence: 0 }
         : region,
     );
     // The prompt asks the model to round to a whole or half mark, but nothing
     // in GradingSchema enforced that — normalize here rather than trust it.
-    const gradings = result.data.gradings.map((g) => ({
+    const gradings = mappingData.gradings.map((g) => ({
       ...g,
       marksAwarded: normalizeMarksAwarded(g.marksAwarded, g.marksTotal),
     }));
     const summary = buildMappingSummary(gradings, regions);
 
-    return NextResponse.json({ regions, gradings, summary, provider: result.provider });
+    return NextResponse.json({
+      regions,
+      gradings,
+      summary,
+      provider: result.provider,
+      incompleteCoverage,
+    });
   } catch (error) {
     const pipelineError = normalizeError(error, "unreadable-file");
     return NextResponse.json(pipelineErrorToResponseBody(pipelineError), { status: 500 });

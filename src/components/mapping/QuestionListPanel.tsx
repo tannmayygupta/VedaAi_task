@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { QuestionCard, LOW_CONFIDENCE_TOOLTIP, HANDWRITING_MISMATCH_TOOLTIP } from "./QuestionCard";
 import { SummaryBanner } from "./SummaryBanner";
+import { CoverageWarningBanner } from "./CoverageWarningBanner";
 import { scoreTier, type Grading } from "@/lib/schemas/grading";
 import { buildMappingSummary } from "@/lib/mapping/mappingSummary";
 import { getReviewReason } from "@/lib/mapping/reviewFlag";
@@ -22,6 +23,8 @@ export type QuestionListPanelProps = {
   onClearSelection: () => void;
   /** Region ids the Phase 9 handwriting cross-check flagged as disagreeing (see docs/PRD.md §16). */
   mismatchedRegionIds?: ReadonlySet<string>;
+  /** See docs/DECISIONS.md "Post-mitigation re-audit of the OpenAI failover". */
+  incompleteCoverage?: boolean;
 };
 
 const REVIEW_TOOLTIPS = {
@@ -37,6 +40,7 @@ export function QuestionListPanel({
   onSelectQuestion,
   onClearSelection,
   mismatchedRegionIds = new Set(),
+  incompleteCoverage = false,
 }: QuestionListPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -83,7 +87,7 @@ export function QuestionListPanel({
   }, [regions, mismatchedRegionIds]);
 
   function handleExportJson() {
-    exportMappingDataAsJson({ questions, regions, gradings, summary });
+    exportMappingDataAsJson({ questions, regions, gradings, summary, incompleteCoverage });
   }
 
   return (
@@ -94,6 +98,7 @@ export function QuestionListPanel({
         onToggleExpandAll={handleToggleExpandAll}
         onExportJson={handleExportJson}
       />
+      {incompleteCoverage && <CoverageWarningBanner />}
       <div className="flex flex-col gap-3 overflow-y-auto">
         {questions.map((question) => {
           const grading = gradings.find((g) => g.questionId === question.id);

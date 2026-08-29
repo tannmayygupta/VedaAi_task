@@ -203,12 +203,21 @@ decision log; this section states only what changed and why it mattered.
   (covered page 7-11 of 15 across identical re-runs) that stronger prompting didn't eliminate.
   Shipped the one mitigation that measurably helped without regressing (an explicit "review every
   page, don't stop early" instruction, now in the shared prompt) — this raises best-case coverage
-  but does not guarantee full-document coverage. Net effect: on total Gemini failure, a teacher
-  still gets a working screen instead of an error, but should treat an OpenAI-served result as
-  lower-confidence, not equivalent — the response's `provider` field makes this observable. Full
-  reliability would need per-provider PDF chunking (a new dependency, page-splitting, and a merge
-  strategy for continuations crossing chunk boundaries) — deliberately not built, since this is a
-  rarely-triggered failover path on an already-submitted assignment, not the primary pipeline.
+  but does not guarantee full-document coverage; a real re-audit later confirmed the gap persists
+  run-to-run on the identical file (all 15 pages one run, only 8 the next). Added a second, cheap
+  guardrail on top rather than chase it further with prompting alone: after either provider's
+  response comes back, check whether it actually reached near the sheet's real last page
+  (server-side page count via `pdf-lib`); if not, give that same provider one more attempt with an
+  explicit note naming the missed pages; if it's still short, ship the result anyway but flag
+  `incompleteCoverage: true`, which the mapping screen renders as a visible "verify manually"
+  banner instead of a silent high-confidence grade. Applies to whichever provider actually served
+  the result, not just OpenAI, since the underlying cause is a model-capability ceiling, not a
+  provider quirk. Net effect: on total Gemini failure, a teacher still gets a working screen instead
+  of an error, and now gets an honest signal — not just the `provider` field, but a visible warning —
+  when that result may be incomplete. Full reliability would still need per-provider PDF chunking (a
+  new dependency, page-splitting, and a merge strategy for continuations crossing chunk boundaries) —
+  deliberately not built, since this is a rarely-triggered failover path on an already-submitted
+  assignment, not the primary pipeline.
 - **No auth, no database, in-memory only** — by design, per the assignment's own constraints.
   Results exist only for the current browser session (with an optional sessionStorage cache for
   the current tab); nothing persists across sessions or devices.

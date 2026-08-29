@@ -1,4 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { PDFDocument } from "pdf-lib";
+
+async function makePdfBytes(pageCount: number): Promise<ArrayBuffer> {
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < pageCount; i++) {
+    pdf.addPage([100, 100]);
+  }
+  const bytes = await pdf.save();
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
 
 const fetchBlobFileMock = vi.fn();
 const callGeminiJsonMock = vi.fn();
@@ -266,6 +276,140 @@ describe("POST /api/extract-and-map-answers", () => {
     expect(json.regions).toEqual([]);
     expect(json.gradings).toEqual([]);
     expect(json.summary.totalQuestionCount).toBe(0);
+  });
+
+  it("does not retry, and reports full coverage, when the first response already reaches the last page", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: await makePdfBytes(15),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValueOnce({
+      regions: [sampleRegion({ pageIndex: 14 })],
+      gradings: [sampleGrading()],
+    });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    const json = await response.json();
+    expect(json.incompleteCoverage).toBe(false);
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries the same provider once on incomplete page coverage, and uses the improved result", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: await makePdfBytes(15),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock
+      .mockResolvedValueOnce({ regions: [sampleRegion({ pageIndex: 8 })], gradings: [sampleGrading()] })
+      .mockResolvedValueOnce({
+        regions: [sampleRegion({ pageIndex: 8 }), sampleRegion({ id: "r2", pageIndex: 14 })],
+        gradings: [sampleGrading()],
+      });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    const json = await response.json();
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
+    // The retry call included a correction note referencing the missed pages.
+    const secondCallArgs = callGeminiJsonMock.mock.calls[1][0];
+    expect(JSON.stringify(secondCallArgs)).toMatch(/page 9/);
+    expect(json.incompleteCoverage).toBe(false);
+    expect(json.regions).toHaveLength(2);
+  });
+
+  it("reports incompleteCoverage when the retry still doesn't reach the last page", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: await makePdfBytes(15),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValue({
+      regions: [sampleRegion({ pageIndex: 8 })],
+      gradings: [sampleGrading()],
+    });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
+    expect(json.incompleteCoverage).toBe(true);
+  });
+
+  it("retries OpenAI (not Gemini) when OpenAI's failover result has incomplete coverage", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: await makePdfBytes(15),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockRejectedValue(new Error("quota exceeded"));
+    callOpenAiJsonMock
+      .mockResolvedValueOnce({ regions: [sampleRegion({ pageIndex: 8 })], gradings: [sampleGrading()] })
+      .mockResolvedValueOnce({
+        regions: [sampleRegion({ pageIndex: 14 })],
+        gradings: [sampleGrading()],
+      });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    const json = await response.json();
+    expect(json.provider).toBe("openai");
+    expect(json.incompleteCoverage).toBe(false);
+    expect(callOpenAiJsonMock).toHaveBeenCalledTimes(2);
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("flags incomplete coverage even when one region has a hallucinated out-of-range pageIndex", async () => {
+    // Real observed case: only 3 regions found on a 15-page sheet, but one
+    // region claimed pageIndex 15 (out of range) — a naive raw-max check
+    // would misread that as "reached the last page" when it clearly didn't.
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: await makePdfBytes(15),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock.mockResolvedValue({
+      regions: [
+        sampleRegion({ pageIndex: 0 }),
+        sampleRegion({ id: "r2", pageIndex: 1 }),
+        sampleRegion({ id: "r3", pageIndex: 15 }),
+      ],
+      gradings: [sampleGrading()],
+    });
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.incompleteCoverage).toBe(true);
+    expect(callGeminiJsonMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the original result if the coverage retry itself throws", async () => {
+    fetchBlobFileMock.mockResolvedValueOnce({
+      bytes: await makePdfBytes(15),
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    });
+    callGeminiJsonMock
+      .mockResolvedValueOnce({ regions: [sampleRegion({ pageIndex: 8 })], gradings: [sampleGrading()] })
+      .mockRejectedValueOnce(new Error("network blip"));
+
+    const response = await POST(
+      makeRequest({ blobUrl: "https://blob.example/answer-sheet.pdf", questions: sampleQuestions }),
+    );
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.incompleteCoverage).toBe(true);
+    expect(json.regions).toHaveLength(1);
   });
 
   it("returns 500 when fetchBlobFile rejects", async () => {

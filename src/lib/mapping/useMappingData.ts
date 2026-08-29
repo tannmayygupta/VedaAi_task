@@ -12,6 +12,10 @@ export type MappingData = {
   regions: AnswerRegion[];
   gradings: Grading[];
   summary: MappingSummary;
+  /** True when the mapping call (after its own one automatic retry) still
+   * didn't reach near the answer sheet's last page — see
+   * docs/DECISIONS.md "Post-mitigation re-audit of the OpenAI failover". */
+  incompleteCoverage: boolean;
 };
 
 export type MappingDataState =
@@ -91,6 +95,7 @@ export function useMappingData(
           regions: aJson.regions,
           gradings: aJson.gradings,
           summary: aJson.summary,
+          incompleteCoverage: aJson.incompleteCoverage ?? false,
         };
         writeMappingCache(questionPaperUrl, answerSheetUrl, data);
         if (!cancelled) {

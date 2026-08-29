@@ -59,7 +59,7 @@ function MappingScreen({
   data: MappingData;
   viewerBlobUrls: string[];
 }) {
-  const { questions, regions, gradings } = data;
+  const { questions, regions, gradings, incompleteCoverage } = data;
   const selection = useMappingSelection(questions, regions);
   // Mobile only (Figma's phone frames replace the desktop two-panel layout
   // with a "Questions | Answer Sheet" tab toggle — see
@@ -135,6 +135,7 @@ function MappingScreen({
             onSelectQuestion={selectQuestionAndShowAnswer}
             onClearSelection={selection.clearSelection}
             mismatchedRegionIds={mismatchedRegionIds}
+            incompleteCoverage={incompleteCoverage}
           />
           <UnmatchedAnswersPanel
             unmatchedRegions={unmatchedRegions}
