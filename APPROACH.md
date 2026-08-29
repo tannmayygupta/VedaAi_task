@@ -187,15 +187,20 @@ decision log; this section states only what changed and why it mattered.
 - **`DEFAULT_MARKS_WHEN_UNSTATED = 2`** is a judgment call (per the PRD's own suggested example),
   not derived from the source documents — it affects the total score whenever a question paper
   doesn't state marks for a question.
-- **Core pipeline now fails over from Gemini to OpenAI, not single-provider.** If Gemini fails
-  entirely, both extraction routes independently redo the same job via OpenAI before giving up —
-  see "Bonus" above. This still isn't infinite redundancy: if *both* providers are down or
-  exhausted at once, extraction fails and the UI shows the existing error screen with "Try Again."
-  The OpenAI side of this failover has been verified to reach OpenAI's real API correctly (proven
-  by a real, specific billing error surfacing rather than a request-shape error) but not yet
-  verified to return a real, model-served result end-to-end, since that account had no spendable
-  credits at the time of testing — worth re-confirming once it does, though the request path
-  itself is already proven correct.
+- **Core pipeline now fails over from Gemini to OpenAI, not single-provider — but the failover is
+  a safety net against total failure, not an equal-quality substitute.** If Gemini fails entirely,
+  both extraction routes independently redo the same job via OpenAI before giving up — see "Bonus"
+  above. Tested for real, end to end, against the actual 15-page handwritten document this project
+  was verified against throughout: OpenAI's question extraction was accurate, but its answer-mapping
+  call found only 15 regions (one per question, no multi-page continuations, vs. Gemini's 25) and
+  never processed pages 10-14 of the 15-page document, while still confidently grading all 15
+  questions a perfect, suspiciously uniform 2/2 — a pattern never once seen from Gemini's own
+  grading (which consistently varies, matching genuine partial credit). This points to OpenAI's PDF
+  ingestion not handling a large multi-page file as completely as Gemini's does. Net effect: on
+  total Gemini failure, a teacher still gets a working screen instead of an error, but should treat
+  an OpenAI-served result as lower-confidence, not equivalent — the response's `provider` field
+  makes this observable. Not fixed this session (would need per-provider PDF chunking); if this
+  failure mode is worth trusting further, that's the next step, not a quick patch.
 - **No auth, no database, in-memory only** — by design, per the assignment's own constraints.
   Results exist only for the current browser session (with an optional sessionStorage cache for
   the current tab); nothing persists across sessions or devices.
