@@ -45,6 +45,15 @@ describe("answer mapping prompt", () => {
     expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/correctness/);
   });
 
+  it("instructs the model to review every page, not stop early", () => {
+    // Added after a real diagnostic showed OpenAI's failover path (via input_file)
+    // stopping partway through a dense multi-page PDF under this prompt's full
+    // segment+match+grade complexity, even though it could read the full
+    // document under a simpler query — see docs/DECISIONS.md.
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/every page/i);
+    expect(ANSWER_MAPPING_SYSTEM_PROMPT).toMatch(/do not stop/i);
+  });
+
   it("references the shared default-marks fallback for questions with no stated marks", () => {
     expect(ANSWER_MAPPING_SYSTEM_PROMPT).toContain(String(DEFAULT_MARKS_WHEN_UNSTATED));
   });

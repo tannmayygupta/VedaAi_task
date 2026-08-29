@@ -12,6 +12,10 @@ following this exact procedure.
 STEP 1 — SEGMENT: find every distinct block of handwritten content that represents a genuine
 attempt to answer a question (a contiguous block of handwriting, plus any diagram drawn as part
 of that answer). Ignore headers, name/roll-number fields, margins, blank space, and page numbers.
+The answer sheet may have many pages — before finalizing your output, explicitly account for
+EVERY page from the first to the last one; do not stop segmenting once you feel you have "enough"
+answers. A real answer sheet's last few pages are just as likely to hold genuine answers as its
+first few.
 
 STEP 2 — FOR EACH REGION, EXTRACT:
 - pageIndex: 0-indexed answer-sheet page.

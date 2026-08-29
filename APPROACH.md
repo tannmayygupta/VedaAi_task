@@ -195,12 +195,20 @@ decision log; this section states only what changed and why it mattered.
   call found only 15 regions (one per question, no multi-page continuations, vs. Gemini's 25) and
   never processed pages 10-14 of the 15-page document, while still confidently grading all 15
   questions a perfect, suspiciously uniform 2/2 — a pattern never once seen from Gemini's own
-  grading (which consistently varies, matching genuine partial credit). This points to OpenAI's PDF
-  ingestion not handling a large multi-page file as completely as Gemini's does. Net effect: on
-  total Gemini failure, a teacher still gets a working screen instead of an error, but should treat
-  an OpenAI-served result as lower-confidence, not equivalent — the response's `provider` field
-  makes this observable. Not fixed this session (would need per-provider PDF chunking); if this
-  failure mode is worth trusting further, that's the next step, not a quick patch.
+  grading (which consistently varies, matching genuine partial credit). Root-caused with 4 direct
+  diagnostic calls against the real API: not a PDF-ingestion page cap (a simple query correctly
+  read page 15) and not a token-budget cutoff (the response completed using a fraction of its
+  available output tokens) — it's a genuine model-capability ceiling under this combination of a
+  large PDF and a complex multi-field structured-output task, confirmed by real run-to-run variance
+  (covered page 7-11 of 15 across identical re-runs) that stronger prompting didn't eliminate.
+  Shipped the one mitigation that measurably helped without regressing (an explicit "review every
+  page, don't stop early" instruction, now in the shared prompt) — this raises best-case coverage
+  but does not guarantee full-document coverage. Net effect: on total Gemini failure, a teacher
+  still gets a working screen instead of an error, but should treat an OpenAI-served result as
+  lower-confidence, not equivalent — the response's `provider` field makes this observable. Full
+  reliability would need per-provider PDF chunking (a new dependency, page-splitting, and a merge
+  strategy for continuations crossing chunk boundaries) — deliberately not built, since this is a
+  rarely-triggered failover path on an already-submitted assignment, not the primary pipeline.
 - **No auth, no database, in-memory only** — by design, per the assignment's own constraints.
   Results exist only for the current browser session (with an optional sessionStorage cache for
   the current tab); nothing persists across sessions or devices.
