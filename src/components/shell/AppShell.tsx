@@ -25,6 +25,7 @@ const BACKGROUND_GRADIENTS = {
 
 export function AppShell({ children, background = "default" }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div
@@ -32,7 +33,10 @@ export function AppShell({ children, background = "default" }: AppShellProps) {
     >
       <div className="flex h-full gap-3">
         <div className="hidden lg:flex">
-          <Sidebar />
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          />
         </div>
         <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-3">
           <div className="hidden lg:block">

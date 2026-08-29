@@ -1,19 +1,34 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
 describe("Sidebar", () => {
   it("renders the brand and nav items without crashing", () => {
-    render(<Sidebar />);
+    render(<Sidebar collapsed={false} onToggleCollapse={() => {}} />);
     expect(screen.getByText("VedaAI")).toBeInTheDocument();
     expect(screen.getByText("Exams")).toBeInTheDocument();
     expect(screen.getByText("Home")).toBeInTheDocument();
   });
 
-  it("renders the sidebar toggle button", () => {
-    render(<Sidebar />);
-    expect(screen.getByRole("button", { name: /toggle sidebar/i })).toBeInTheDocument();
+  it("renders a collapse button that calls onToggleCollapse when expanded", async () => {
+    const onToggleCollapse = vi.fn();
+    render(<Sidebar collapsed={false} onToggleCollapse={onToggleCollapse} />);
+    await userEvent.click(screen.getByRole("button", { name: /collapse sidebar/i }));
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the icon-only collapsed rail (Figma's Loading state sidebar), with a working expand button", async () => {
+    const onToggleCollapse = vi.fn();
+    render(<Sidebar collapsed={true} onToggleCollapse={onToggleCollapse} />);
+    // Labels are no longer visible text in the collapsed rail — only icon alt text/titles.
+    expect(screen.queryByText("VedaAI")).not.toBeInTheDocument();
+    expect(screen.getByAltText("Home")).toBeInTheDocument();
+    expect(screen.getByAltText("Exams")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /expand sidebar/i }));
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1);
   });
 });
 
